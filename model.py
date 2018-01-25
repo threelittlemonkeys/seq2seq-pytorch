@@ -13,7 +13,7 @@ NUM_DIRS = 2 if BIDIRECTIONAL else 1
 LEARNING_RATE = 0.01
 WEIGHT_DECAY = 1e-4
 VERBOSE = False
-SAVE_EVERY = 100
+SAVE_EVERY = 10
 
 PAD = "<PAD>" # padding
 EOS = "<EOS>" # end of sequence

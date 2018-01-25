@@ -61,9 +61,9 @@ def train():
     print(encoder)
     print(decoder)
     print("training model...")
-    for ei in range(epoch + 1, epoch + num_epochs + 1):
+    for i in range(epoch + 1, epoch + num_epochs + 1):
         loss_sum = 0
-        for ii, (x, y) in enumerate(data):
+        for x, y in enumerate(data):
             loss = 0
             encoder.zero_grad()
             decoder.zero_grad()
@@ -96,13 +96,13 @@ def train():
             loss = scalar(loss)
             loss_sum += loss
             if VERBOSE:
-                print("epoch = %d, iteration = %d, loss = %f\n" % (ei, ii + 1, loss))
                 for a, b, c in zip(x, y, pred):
                     print(" ".join([itow_src[scalar(i)] for i in a]))
                     print(" ".join([itow_tgt[i] for i in c][:len_unpadded(b)]))
-                    print()
-        if ei % SAVE_EVERY == 0 or ei == epoch + num_epochs:
-            save_checkpoint(filename, encoder, decoder, ei, loss_sum / len(data))
+        if i % SAVE_EVERY and i != epoch + num_epochs:
+            print("epoch = %d, loss = %f" % (i, loss_sum / len(data)))
+        else:
+            save_checkpoint(filename, encoder, decoder, i, loss_sum / len(data))
 
 if __name__ == "__main__":
     if len(sys.argv) != 6:
