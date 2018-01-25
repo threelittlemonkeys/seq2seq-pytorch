@@ -95,14 +95,13 @@ def train():
             decoder_optim.step()
             loss = scalar(loss)
             loss_sum += loss
-            print("epoch = %d, iteration = %d, loss = %f" % (ei, ii + 1, loss))
             if VERBOSE:
-                print()
+                print("epoch = %d, iteration = %d, loss = %f\n" % (ei, ii + 1, loss))
                 for a, b, c in zip(x, y, pred):
                     print(" ".join([itow_src[scalar(i)] for i in a]))
                     print(" ".join([itow_tgt[i] for i in c][:len_unpadded(b)]))
                     print()
-        if ei % SAVE_EVERY == 0:
+        if ei % SAVE_EVERY == 0 or ei == epoch + num_epochs:
             save_checkpoint(filename, encoder, decoder, ei, loss_sum / len(data))
 
 if __name__ == "__main__":
