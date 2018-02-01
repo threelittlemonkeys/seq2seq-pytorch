@@ -3,7 +3,7 @@ from model import *
 
 def tokenize(s):
     s = s.lower()
-    s = re.sub("[^ a-z0-9" + chr(0xAC00) + "-" + chr(0xD7A3) + "]+", "", s)
+    s = re.sub("[^ a-z0-9\uAC00-\uD7A3]+", "", s)
     s = re.sub("\s+", " ", s)
     s = re.sub("^ | $", "", s)
     return s.split(" ")
