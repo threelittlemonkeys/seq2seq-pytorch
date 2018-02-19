@@ -39,7 +39,6 @@ def run_model(encoder, decoder, vocab_tgt, data):
         print(vocab_tgt[scalar(decoder_input)])
         if scalar(decoder_input) == EOS_IDX:
             break
-    return None
 
 def predict():
     data = []
@@ -49,11 +48,11 @@ def predict():
         tokens = tokenize(line)
         data.append((line, [vocab_src[i] for i in tokens] + [vocab_src[EOS]]))
         if len(data) == BATCH_SIZE:
-            result = run_model(encoder, decoder, vocab_tgt, data)
+            run_model(encoder, decoder, vocab_tgt, data)
             data = []
     fo.close()
     if len(data):
-        result = run_model(encoder, decoder, vocab_tgt, data)
+        run_model(encoder, decoder, vocab_tgt, data)
 
 if __name__ == "__main__":
     if len(sys.argv) != 5:
