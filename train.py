@@ -1,10 +1,8 @@
 import sys
 import os.path
 import re
-import time
 from model import *
 from utils import *
-from random import random
 
 def load_data():
     data = []
