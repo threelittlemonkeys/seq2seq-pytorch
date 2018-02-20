@@ -41,7 +41,6 @@ def load_data():
     return data, vocab_src, vocab_tgt
 
 def train():
-    print("cuda: %s" % CUDA)
     num_epochs = int(sys.argv[5])
     data, vocab_src, vocab_tgt = load_data()
     if VERBOSE:
@@ -105,4 +104,5 @@ def train():
 if __name__ == "__main__":
     if len(sys.argv) != 6:
         sys.exit("Usage: %s model vocab.src vocab.tgt training_data num_epoch" % sys.argv[0])
+    print("cuda: %s" % CUDA)
     train()
