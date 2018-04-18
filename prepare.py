@@ -2,8 +2,8 @@ import sys
 from model import SOS, EOS, PAD
 from utils import tokenize
 
-MIN_LENGTH = 3
-MAX_LENGTH = 10
+MIN_LENGTH = 2
+MAX_LENGTH = 50
 
 def load_data():
     data = []
@@ -12,8 +12,8 @@ def load_data():
     fo = open(sys.argv[1])
     for line in fo:
         src, tgt = line.split("\t")
-        tokens_src = tokenize(src)
-        tokens_tgt = tokenize(tgt)
+        tokens_src = tokenize(src, "word")
+        tokens_tgt = tokenize(tgt, "word")
         if len(tokens_src) < MIN_LENGTH or len(tokens_src) > MAX_LENGTH:
             continue
         if len(tokens_tgt) < MIN_LENGTH or len(tokens_tgt) > MAX_LENGTH:
@@ -23,24 +23,24 @@ def load_data():
         for word in tokens_src:
             if word not in vocab_src:
                 vocab_src[word] = len(vocab_src)
-            seq_src.append(vocab_src[word])
+            seq_src.append(str(vocab_src[word]))
         for word in tokens_tgt:
             if word not in vocab_tgt:
                 vocab_tgt[word] = len(vocab_tgt)
-            seq_tgt.append(vocab_tgt[word])
-        data.append(seq_src + seq_tgt + [len(seq_src)])
-    data.sort(key = lambda x: x[-1], reverse = True) # sort by source sequence length
+            seq_tgt.append(str(vocab_tgt[word]))
+        data.append((seq_src, seq_tgt))
+    data.sort(key = lambda x: len(x[0]), reverse = True) # sort by source sequence length
     fo.close()
     return data, vocab_src, vocab_tgt
 
 def save_data(data):
     fo = open(sys.argv[1] + ".csv", "w")
     for seq in data:
-        fo.write("%s\n" % (" ".join([str(i) for i in seq])))
+        fo.write(" ".join(seq[0]) + "\t" + " ".join(seq[1]) + "\n")
     fo.close()
 
 def save_vocab(vocab, ext):
-    fo = open("vocab." + ext, "w")
+    fo = open(sys.argv[1] + ".vocab." + ext, "w")
     for word, _ in sorted(vocab.items(), key = lambda x: x[1]):
         fo.write("%s\n" % word)
     fo.close()

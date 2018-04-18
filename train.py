@@ -1,8 +1,9 @@
 import sys
-import os.path
 import re
+import time
 from model import *
 from utils import *
+from os.path import isfile
 
 def load_data():
     data = []
@@ -16,20 +17,20 @@ def load_data():
     fo = open(sys.argv[4], "r")
     for line in fo:
         line = line.strip()
-        words = [int(i) for i in line.split(" ")]
-        len_src = words.pop()
-        len_tgt = len(words) - len_src
-        if len_src > batch_len_src:
-            batch_len_src = len_src
-        if len_tgt > batch_len_tgt:
-            batch_len_tgt = len_tgt
-        batch_src.append(words[:len_src] + [vocab_src[EOS]])
-        batch_tgt.append(words[len_src:] + [vocab_tgt[EOS]])
+        src, tgt = line.split("\t")
+        src = [int(i) for i in src.split(" ")]
+        tgt = [int(i) for i in tgt.split(" ")]
+        if len(src) > batch_len_src:
+            batch_len_src = len(src)
+        if len(tgt) > batch_len_tgt:
+            batch_len_tgt = len(tgt)
+        batch_src.append(src + [EOS_IDX])
+        batch_tgt.append([SOS_IDX] + tgt + [EOS_IDX])
         if len(batch_src) == BATCH_SIZE:
             for seq in batch_src:
                 seq.extend([PAD_IDX] * (batch_len_src - len(seq) + 1))
             for seq in batch_tgt:
-                seq.extend([PAD_IDX] * (batch_len_tgt - len(seq) + 1))
+                seq.extend([PAD_IDX] * (batch_len_tgt - len(seq) + 2))
             data.append((Var(LongTensor(batch_src)), Var(LongTensor(batch_tgt))))
             batch_src = []
             batch_tgt = []
@@ -41,68 +42,59 @@ def load_data():
     return data, vocab_src, vocab_tgt
 
 def train():
+    print("cuda: %s" % CUDA)
     num_epochs = int(sys.argv[5])
     data, vocab_src, vocab_tgt = load_data()
     if VERBOSE:
         itow_src = [word for word, _ in sorted(vocab_src.items(), key = lambda x: x[1])]
         itow_tgt = [word for word, _ in sorted(vocab_tgt.items(), key = lambda x: x[1])]
-    encoder = rnn_encoder(len(vocab_src))
-    decoder = rnn_decoder_vanilla(len(vocab_tgt))
-    encoder_optim = torch.optim.SGD(encoder.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
-    decoder_optim = torch.optim.SGD(decoder.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
-    epoch = load_checkpoint(sys.argv[1], encoder, decoder) if os.path.isfile(sys.argv[1]) else 0
-    if CUDA:
-        encoder = encoder.cuda()
-        decoder = decoder.cuda()
+    enc = encoder(len(vocab_src))
+    dec = decoder_attn(len(vocab_tgt))
+    enc_optim = torch.optim.SGD(enc.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
+    dec_optim = torch.optim.SGD(dec.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
+    epoch = load_checkpoint(sys.argv[1], enc, dec) if isfile(sys.argv[1]) else 0
     filename = re.sub("\.epoch[0-9]+$", "", sys.argv[1])
-    print(encoder)
-    print(decoder)
+    print(enc)
+    print(dec)
     print("training model...")
-    for i in range(epoch + 1, epoch + num_epochs + 1):
+    for ei in range(epoch + 1, epoch + num_epochs + 1):
         loss_sum = 0
-        for x, y in enumerate(data):
+        timer = time.time()
+        for x, y in data:
             loss = 0
-            encoder.zero_grad()
-            decoder.zero_grad()
+            enc.zero_grad()
+            dec.zero_grad()
             if VERBOSE:
                 pred = [[] for _ in range(BATCH_SIZE)]
-
-            # encoder forward pass
-            encoder_outputs = Var(zeros(BATCH_SIZE, x.size(1), HIDDEN_SIZE))
-            for t in range(x.size(1)):
-                encoder_outputs[:, t] = encoder(x[:, t].unsqueeze(1))
-
-            # decoder forward pass
-            decoder_input = Var(LongTensor([SOS_IDX] * BATCH_SIZE)).unsqueeze(1)
-            decoder_outputs = Var(zeros(BATCH_SIZE, y.size(1), HIDDEN_SIZE))
-            decoder.hidden = encoder.hidden
-
-            # teacher forcing
-            for t in range(y.size(1)):
-                decoder_output = decoder(decoder_input)
-                mask = Var(y[:, t].data.gt(0).float().unsqueeze(-1).expand_as(decoder_output))
-                loss += F.nll_loss(decoder_output * mask, y[:, t])
-                decoder_input = y[:, t].unsqueeze(1)
+            enc_out = enc(x)
+            dec.hidden = enc.hidden
+            for t in range(y.size(1) - 1):
+                dec_in = y[:, t].unsqueeze(1) # teacher forcing
+                dec_out = dec(dec_in, enc_out)
+                loss += F.nll_loss(dec_out, y[:, t + 1], size_average = False, ignore_index = PAD_IDX)
+                # mask = Var(y[:, t].data.gt(0).float().unsqueeze(-1).expand_as(dec_out))
+                # loss += F.nll_loss(dec_out * mask, y[:, t + 1])
                 if VERBOSE:
-                    for i, j in enumerate(decoder_output.data.topk(1)[1]):
+                    for i, j in enumerate(dec_out.data.topk(1)[1]):
                         pred[i].append(scalar(Var(j)))
-
+            loss /= y.data.gt(0).sum() # divide by the number of unpadded tokens
             loss.backward()
-            encoder_optim.step()
-            decoder_optim.step()
-            loss = scalar(loss)
+            enc_optim.step()
+            dec_optim.step()
+            loss = scalar(loss) / len(x)
             loss_sum += loss
-            if VERBOSE:
-                for a, b, c in zip(x, y, pred):
-                    print(" ".join([itow_src[scalar(i)] for i in a]))
-                    print(" ".join([itow_tgt[i] for i in c][:len_unpadded(b)]))
-        if i % SAVE_EVERY and i != epoch + num_epochs:
-            print("epoch = %d, loss = %f" % (i, loss_sum / len(data)))
+        timer = time.time() - timer
+        loss_sum /= len(data)
+        if ei % SAVE_EVERY and ei != epoch + num_epochs:
+            save_checkpoint("", "", "", ei, loss_sum, timer)
         else:
-            save_checkpoint(filename, encoder, decoder, i, loss_sum / len(data))
+            if VERBOSE:
+                for x, y in zip(x, y):
+                    print(" ".join([itow_src[scalar(i)] for i in x]))
+                    print(" ".join([itow_tgt[scalar(i)] for i in y]))
+            save_checkpoint(filename, enc, dec, ei, loss_sum, timer)
 
 if __name__ == "__main__":
     if len(sys.argv) != 6:
         sys.exit("Usage: %s model vocab.src vocab.tgt training_data num_epoch" % sys.argv[0])
-    print("cuda: %s" % CUDA)
     train()
