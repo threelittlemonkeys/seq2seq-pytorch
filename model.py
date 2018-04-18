@@ -26,6 +26,7 @@ SOS_IDX = 2
 
 torch.manual_seed(1)
 CUDA = torch.cuda.is_available()
+CUDA = False
 
 class encoder(nn.Module):
     def __init__(self, vocab_size):
@@ -119,7 +120,7 @@ class decoder_attn(nn.Module): # attention-based
         h, _ = self.rnn(x, self.hidden)
         c = self.attn(h, enc_out)
         h = torch.cat((h.squeeze(1), c.squeeze(1)), 1)
-        h = self.cat(h) # attentional vector
+        h = F.tanh(self.cat(h)) # attentional vector
         y = self.out(h)
         y = self.softmax(y)
         return y
@@ -140,8 +141,9 @@ class attention(nn.Module): # attention layer (Luong 2015)
         return score
 
     def forward(self, h_tgt, h_src):
-        attn_weights = F.softmax(self.score(h_tgt, h_src), dim = 1) # alignment weight vector
-        return attn_weights.unsqueeze(1).bmm(h_src) # context vector
+        a = F.softmax(self.score(h_tgt, h_src), dim = 1) # alignment weight vector
+        c = a.unsqueeze(1).bmm(h_src) # context vector
+        return c
 
 def LongTensor(*args):
     x = torch.LongTensor(*args)
