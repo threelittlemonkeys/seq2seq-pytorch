@@ -65,7 +65,7 @@ class encoder(nn.Module):
 class decoder(nn.Module):
     def __init__(self, vocab_size):
         super().__init__()
-        self.attn = True # global, local, None
+        self.attn = "global" # None, global, local (Luong 2015)
 
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
@@ -78,7 +78,7 @@ class decoder(nn.Module):
             dropout = DROPOUT,
             bidirectional = BIDIRECTIONAL
         )
-        if self.attn: # global attention (Luong 2015)
+        if self.attn == "global":
             self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
             self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
         self.out = nn.Linear(HIDDEN_SIZE, vocab_size)
@@ -90,10 +90,11 @@ class decoder(nn.Module):
     def forward(self, dec_in, enc_out = None, x_mask = None):
         dec_in = self.embed(dec_in)
         h, _ = self.rnn(dec_in, self.hidden)
-        if self.attn:
-            a = h.bmm(self.Wa(enc_out).transpose(1, 2)) # alignment scores
+        if self.attn == "global":
+            # alignment function
+            a = h.bmm(self.Wa(enc_out).transpose(1, 2)) # general
             a.masked_fill_(Var(1 - x_mask.unsqueeze(1)), -10000)
-            a = F.softmax(a, dim = -1) # alignment vector
+            a = F.softmax(a, dim = -1) # alignment weights
             c = a.bmm(enc_out) # context vector
             h = torch.cat((h, c), -1)
             h = F.tanh(self.Wc(h)) # attentional vector
