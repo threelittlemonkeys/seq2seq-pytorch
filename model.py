@@ -13,7 +13,7 @@ BIDIRECTIONAL = True
 NUM_DIRS = 2 if BIDIRECTIONAL else 1
 LEARNING_RATE = 0.01
 WEIGHT_DECAY = 1e-4
-VERBOSE = True
+VERBOSE = False
 SAVE_EVERY = 10
 
 PAD = "<PAD>" # padding
@@ -26,7 +26,6 @@ SOS_IDX = 2
 
 torch.manual_seed(1)
 CUDA = torch.cuda.is_available()
-CUDA = False
 
 class encoder(nn.Module):
     def __init__(self, vocab_size):
@@ -54,18 +53,19 @@ class encoder(nn.Module):
             return (Var(h), Var(c))
         return Var(h)
 
-    def forward(self, x):
-        lens = [len(seq) for seq in x]
-        self.hidden = self.init_hidden("GRU")
+    def forward(self, x, x_mask):
+        lens = [sum(seq) for seq in x_mask]
+        self.hidden = self.init_hidden("GRU") # LSTM or GRU
         x = self.embed(x)
         x = nn.utils.rnn.pack_padded_sequence(x, lens, batch_first = True)
         y, _ = self.rnn(x, self.hidden)
         y, _ = nn.utils.rnn.pad_packed_sequence(y, batch_first = True)
         return y
 
-class decoder(nn.Module): # vanilla
+class decoder(nn.Module):
     def __init__(self, vocab_size):
         super().__init__()
+        self.attn = True
 
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
@@ -78,72 +78,32 @@ class decoder(nn.Module): # vanilla
             dropout = DROPOUT,
             bidirectional = BIDIRECTIONAL
         )
+        if self.attn: # global attention (Luong 2015)
+            self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
+            self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
         self.out = nn.Linear(HIDDEN_SIZE, vocab_size)
-        self.softmax = nn.LogSoftmax(1)
+        self.softmax = nn.LogSoftmax(-1)
 
         if CUDA:
             self = self.cuda()
 
-    def forward(self, x):
-        lens = [len(seq) for seq in x]
-        x = self.embed(x)
-        h, _ = self.rnn(x, self.hidden)
+    def forward(self, dec_in, enc_out = None, x_mask = None):
+        dec_in = self.embed(dec_in)
+        h, _ = self.rnn(dec_in, self.hidden)
+        if self.attn:
+            a = h.bmm(self.Wa(enc_out).transpose(1, 2)) # alignment scores
+            a.masked_fill_(Var(1 - x_mask.unsqueeze(1)), -10000)
+            a = F.softmax(a, dim = -1) # alignment vector
+            c = a.bmm(enc_out) # context vector
+            h = torch.cat((h, c), -1)
+            h = F.tanh(self.Wc(h)) # attentional vector
         y = self.out(h).squeeze(1)
         y = self.softmax(y)
         return y
 
-class decoder_attn(nn.Module): # attention-based
-    def __init__(self, vocab_size):
-        super().__init__()
-
-        # architecture
-        self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
-        self.rnn = nn.GRU( # LSTM or GRU
-            input_size = EMBED_SIZE,
-            hidden_size = HIDDEN_SIZE // NUM_DIRS,
-            num_layers = NUM_LAYERS,
-            bias = True,
-            batch_first = True,
-            dropout = DROPOUT,
-            bidirectional = BIDIRECTIONAL
-        )
-        self.attn = attention()
-        self.cat = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
-        self.out = nn.Linear(HIDDEN_SIZE, vocab_size)
-        self.softmax = nn.LogSoftmax(1)
-
-        if CUDA:
-            self = self.cuda()
-
-    def forward(self, x, enc_out):
-        x = self.embed(x)
-        h, _ = self.rnn(x, self.hidden)
-        c = self.attn(h, enc_out)
-        h = torch.cat((h.squeeze(1), c.squeeze(1)), 1)
-        h = F.tanh(self.cat(h)) # attentional vector
-        y = self.out(h)
-        y = self.softmax(y)
-        return y
-
-class attention(nn.Module): # attention layer (Luong 2015)
-    def __init__(self):
-        super().__init__()
-        self.fnn = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
-
-    def score(self, h_tgt, h_src):
-        batch_len = h_src.size(1)
-        score = Var(zeros(BATCH_SIZE, batch_len))
-        for b in range(BATCH_SIZE):
-            ht = h_tgt[b, 0] # current target hidden state
-            for t in range(batch_len):
-                hs = h_src[b, t] # encoder output
-                score[b, t] = ht.dot(self.fnn(hs)) # general product
-        return score
-
-    def forward(self, h_tgt, h_src):
-        a = F.softmax(self.score(h_tgt, h_src), dim = 1) # alignment weight vector
-        c = a.unsqueeze(1).bmm(h_src) # context vector
-        return c
+def Tensor(*args):
+    x = torch.Tensor(*args)
+    return x.cuda() if CUDA else x
 
 def LongTensor(*args):
     x = torch.LongTensor(*args)

@@ -49,7 +49,7 @@ def train():
         itow_src = [word for word, _ in sorted(vocab_src.items(), key = lambda x: x[1])]
         itow_tgt = [word for word, _ in sorted(vocab_tgt.items(), key = lambda x: x[1])]
     enc = encoder(len(vocab_src))
-    dec = decoder_attn(len(vocab_tgt))
+    dec = decoder(len(vocab_tgt))
     enc_optim = torch.optim.SGD(enc.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
     dec_optim = torch.optim.SGD(dec.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
     epoch = load_checkpoint(sys.argv[1], enc, dec) if isfile(sys.argv[1]) else 0
@@ -62,15 +62,16 @@ def train():
         timer = time.time()
         for x, y in data:
             loss = 0
+            x_mask = x.data.gt(0)
             enc.zero_grad()
             dec.zero_grad()
             if VERBOSE:
                 pred = [[] for _ in range(BATCH_SIZE)]
-            enc_out = enc(x)
+            enc_out = enc(x, x_mask)
             dec.hidden = enc.hidden
             for t in range(y.size(1) - 1):
                 dec_in = y[:, t].unsqueeze(1) # teacher forcing
-                dec_out = dec(dec_in, enc_out)
+                dec_out = dec(dec_in, enc_out, x_mask)
                 loss += F.nll_loss(dec_out, y[:, t + 1], size_average = False, ignore_index = PAD_IDX)
                 # mask = Var(y[:, t].data.gt(0).float().unsqueeze(-1).expand_as(dec_out))
                 # loss += F.nll_loss(dec_out * mask, y[:, t + 1])
