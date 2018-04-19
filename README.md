@@ -1,6 +1,10 @@
 # Encoder-Decoder RNNs in PyTorch
 
-A PyTorch implementation of encoder-decoder RNNs for sequence to sequence learning, adapted from [the PyTorch tutorial](http://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html). It supports CUDA and mini-batch training.
+A PyTorch implementation of encoder-decoder RNNs for sequence to sequence learning, adapted from [the PyTorch tutorial](http://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html).
+
+Supported features:
+- Mini-batch training with CUDA
+- Global attention (Luong 2015)
 
 ## Usage
 

@@ -119,6 +119,3 @@ def zeros(*args):
 
 def scalar(x):
     return x.view(-1).data.tolist()[0]
-
-def len_unpadded(x): # get unpadded sequence length
-    return next((i for i, j in enumerate(x) if scalar(j) == 0), len(x))
