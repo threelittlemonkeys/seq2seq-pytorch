@@ -9,9 +9,6 @@ def load_model():
     vocab_tgt = [word for word, _ in sorted(vocab_tgt.items(), key = lambda x: x[1])]
     enc = encoder(len(vocab_src))
     dec = decoder(len(vocab_tgt))
-    if CUDA:
-        enc = enc.cuda()
-        dec = dec.cuda()
     print(enc)
     print(dec)
     load_checkpoint(sys.argv[1], enc, dec)
