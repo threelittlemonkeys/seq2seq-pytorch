@@ -91,8 +91,8 @@ def train():
         else:
             if VERBOSE:
                 for x, y in zip(x, y):
-                    print(" ".join([itow_src[scalar(i)] for i in x]))
-                    print(" ".join([itow_tgt[scalar(i)] for i in y]))
+                    print(" ".join([itow_src[scalar(i)] for i in x if scalar(i) != PAD_IDX]))
+                    print(" ".join([itow_tgt[scalar(i)] for i in y if scalar(i) != PAD_IDX]))
             save_checkpoint(filename, enc, dec, ei, loss_sum, timer)
 
 if __name__ == "__main__":
