@@ -81,6 +81,9 @@ class decoder(nn.Module):
         if self.attn == "global":
             self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
             self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
+        elif self.attn == "local":
+            # TODO
+            pass
         self.out = nn.Linear(HIDDEN_SIZE, vocab_size)
         self.softmax = nn.LogSoftmax(-1)
 
@@ -98,6 +101,9 @@ class decoder(nn.Module):
             c = a.bmm(enc_out) # context vector
             h = torch.cat((h, c), -1)
             h = F.tanh(self.Wc(h)) # attentional vector
+        elif self.attn == "local":
+            # TODO
+            pass
         y = self.out(h).squeeze(1)
         y = self.softmax(y)
         return y
