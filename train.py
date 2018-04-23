@@ -73,8 +73,6 @@ def train():
                 dec_in = y[:, t].unsqueeze(1) # teacher forcing
                 dec_out = dec(dec_in, enc_out, x_mask)
                 loss += F.nll_loss(dec_out, y[:, t + 1], size_average = False, ignore_index = PAD_IDX)
-                # mask = Var(y[:, t].data.gt(0).float().unsqueeze(-1).expand_as(dec_out))
-                # loss += F.nll_loss(dec_out * mask, y[:, t + 1])
                 if VERBOSE:
                     for i, j in enumerate(dec_out.data.topk(1)[1]):
                         pred[i].append(scalar(Var(j)))
