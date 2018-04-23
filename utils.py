@@ -4,10 +4,10 @@ from model import *
 def tokenize(x, unit):
     x = x.lower()
     # x = re.sub("[^ a-z0-9\uAC00-\uD7A3]+", "", x)
-    if unit == "word":
+    if unit == "char":
         x = re.sub("\s+", "", x)
         return list(x)
-    if unit == "word":
+    elif unit == "word":
         x = re.sub("\s+", " ", x)
         x = re.sub("^ | $", "", x)
         return x.split(" ")

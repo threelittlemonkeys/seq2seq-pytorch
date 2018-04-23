@@ -63,9 +63,10 @@ class encoder(nn.Module):
         return y
 
 class decoder(nn.Module):
-    def __init__(self, vocab_size):
+    def __init__(self, vocab_size, attn = None, method = None):
         super().__init__()
-        self.attn = "global" # None, global, local (Luong 2015)
+        self.attn = attn # global, local (Luong 2015)
+        self.method = method # dot, global
 
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
@@ -79,7 +80,8 @@ class decoder(nn.Module):
             bidirectional = BIDIRECTIONAL
         )
         if self.attn == "global":
-            self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
+            if self.method == "general":
+                self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
             self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
         elif self.attn == "local":
             # TODO
@@ -94,8 +96,10 @@ class decoder(nn.Module):
         dec_in = self.embed(dec_in)
         h, _ = self.rnn(dec_in, self.hidden)
         if self.attn == "global":
-            # alignment function
-            a = h.bmm(self.Wa(enc_out).transpose(1, 2)) # general
+            if self.method == "dot":
+                a = h.bmm(enc_out.transpose(1, 2))
+            elif self.method == "general":
+                a = h.bmm(self.Wa(enc_out).transpose(1, 2))
             a.masked_fill_(Var(1 - x_mask.unsqueeze(1)), -10000)
             a = F.softmax(a, dim = -1) # alignment weights
             c = a.bmm(enc_out) # context vector

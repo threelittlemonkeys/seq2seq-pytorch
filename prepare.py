@@ -2,7 +2,7 @@ import sys
 from model import SOS, EOS, PAD
 from utils import tokenize
 
-MIN_LENGTH = 2
+MIN_LENGTH = 3
 MAX_LENGTH = 50
 
 def load_data():

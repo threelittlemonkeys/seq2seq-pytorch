@@ -49,7 +49,7 @@ def train():
         itow_src = [word for word, _ in sorted(vocab_src.items(), key = lambda x: x[1])]
         itow_tgt = [word for word, _ in sorted(vocab_tgt.items(), key = lambda x: x[1])]
     enc = encoder(len(vocab_src))
-    dec = decoder(len(vocab_tgt))
+    dec = decoder(len(vocab_tgt), "global", "dot")
     enc_optim = torch.optim.SGD(enc.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
     dec_optim = torch.optim.SGD(dec.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
     epoch = load_checkpoint(sys.argv[1], enc, dec) if isfile(sys.argv[1]) else 0
