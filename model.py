@@ -63,15 +63,17 @@ class encoder(nn.Module):
         return y
 
 class decoder(nn.Module):
-    def __init__(self, vocab_size, attn = None, method = None):
+    def __init__(self, vocab_size, attn_type = None, attn_method = None):
         super().__init__()
-        self.attn = attn # global, local (Luong 2015)
-        self.method = method # dot, global
+        self.attn_type = attn_type # global, local (Luong 2015)
+        self.attn_method = attn_method # dot, global
+        self.attn_feed = True # input feeding
+        self.attn_hidden = Var(zeros(BATCH_SIZE, 1, HIDDEN_SIZE))
 
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
         self.rnn = nn.GRU( # LSTM or GRU
-            input_size = EMBED_SIZE,
+            input_size = EMBED_SIZE + HIDDEN_SIZE if self.attn_feed else 0,
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -79,11 +81,11 @@ class decoder(nn.Module):
             dropout = DROPOUT,
             bidirectional = BIDIRECTIONAL
         )
-        if self.attn == "global":
-            if self.method == "general":
+        if self.attn_type == "global":
+            if self.attn_method == "general":
                 self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
             self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
-        elif self.attn == "local":
+        elif self.attn_type == "local":
             # TODO
             pass
         self.out = nn.Linear(HIDDEN_SIZE, vocab_size)
@@ -94,18 +96,21 @@ class decoder(nn.Module):
 
     def forward(self, dec_in, enc_out = None, x_mask = None):
         dec_in = self.embed(dec_in)
+        if self.attn_feed:
+            dec_in = torch.cat((dec_in, self.attn_hidden), 2)
         h, _ = self.rnn(dec_in, self.hidden)
-        if self.attn == "global":
-            if self.method == "dot":
+        if self.attn_type == "global":
+            if self.attn_method == "dot":
                 a = h.bmm(enc_out.transpose(1, 2))
-            elif self.method == "general":
+            elif self.attn_method == "general":
                 a = h.bmm(self.Wa(enc_out).transpose(1, 2))
             a.masked_fill_(Var(1 - x_mask.unsqueeze(1)), -10000)
             a = F.softmax(a, dim = -1) # alignment weights
             c = a.bmm(enc_out) # context vector
             h = torch.cat((h, c), -1)
             h = F.tanh(self.Wc(h)) # attentional vector
-        elif self.attn == "local":
+            self.attn_hiden = h
+        elif self.attn_type == "local":
             # TODO
             pass
         y = self.out(h).squeeze(1)
