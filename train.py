@@ -25,12 +25,12 @@ def load_data():
         if len(tgt) > batch_len_tgt:
             batch_len_tgt = len(tgt)
         batch_src.append(src + [EOS_IDX])
-        batch_tgt.append([SOS_IDX] + tgt + [EOS_IDX])
+        batch_tgt.append(tgt + [EOS_IDX])
         if len(batch_src) == BATCH_SIZE:
             for seq in batch_src:
                 seq.extend([PAD_IDX] * (batch_len_src - len(seq) + 1))
             for seq in batch_tgt:
-                seq.extend([PAD_IDX] * (batch_len_tgt - len(seq) + 2))
+                seq.extend([PAD_IDX] * (batch_len_tgt - len(seq) + 1))
             data.append((Var(LongTensor(batch_src)), Var(LongTensor(batch_tgt))))
             batch_src = []
             batch_tgt = []
@@ -49,7 +49,7 @@ def train():
         itow_src = [word for word, _ in sorted(vocab_src.items(), key = lambda x: x[1])]
         itow_tgt = [word for word, _ in sorted(vocab_tgt.items(), key = lambda x: x[1])]
     enc = encoder(len(vocab_src))
-    dec = decoder(len(vocab_tgt), "global", "dot")
+    dec = decoder(len(vocab_tgt))
     enc_optim = torch.optim.SGD(enc.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
     dec_optim = torch.optim.SGD(dec.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
     epoch = load_checkpoint(sys.argv[1], enc, dec) if isfile(sys.argv[1]) else 0
@@ -68,11 +68,13 @@ def train():
             if VERBOSE:
                 pred = [[] for _ in range(BATCH_SIZE)]
             enc_out = enc(x, x_mask)
+            dec_in = Var(LongTensor([SOS_IDX] * BATCH_SIZE)).unsqueeze(1)
             dec.hidden = enc.hidden
-            for t in range(y.size(1) - 1):
-                dec_in = y[:, t].unsqueeze(1) # teacher forcing
+            dec.attn_hidden = Var(zeros(BATCH_SIZE, 1, HIDDEN_SIZE))
+            for t in range(y.size(1)):
                 dec_out = dec(dec_in, enc_out, x_mask)
-                loss += F.nll_loss(dec_out, y[:, t + 1], size_average = False, ignore_index = PAD_IDX)
+                loss += F.nll_loss(dec_out, y[:, t], size_average = False, ignore_index = PAD_IDX)
+                dec_in = y[:, t].unsqueeze(1) # teacher forcing
                 if VERBOSE:
                     for i, j in enumerate(dec_out.data.topk(1)[1]):
                         pred[i].append(scalar(Var(j)))

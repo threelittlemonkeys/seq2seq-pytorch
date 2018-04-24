@@ -37,7 +37,7 @@ def load_checkpoint(filename, enc = None, dec = None, g2c = False):
     return epoch
 
 def save_checkpoint(filename, enc, dec, epoch, loss, timer):
-    log = "epoch = %d, loss = %f, time = %f" % (epoch, loss, timer)
+    print("epoch = %d, loss = %f, time = %f" % (epoch, loss, timer))
     if filename and enc and dec:
         print("saving model...")
         checkpoint = {}
@@ -46,5 +46,4 @@ def save_checkpoint(filename, enc, dec, epoch, loss, timer):
         checkpoint["epoch"] = epoch
         checkpoint["loss"] = loss
         torch.save(checkpoint, filename + ".epoch%d" % epoch)
-        log = "saved model: " + log
-    print(log)
+        print("saved model at epoch %d" % epoch)

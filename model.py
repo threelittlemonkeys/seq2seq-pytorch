@@ -63,17 +63,17 @@ class encoder(nn.Module):
         return y
 
 class decoder(nn.Module):
-    def __init__(self, vocab_size, attn_type = None, attn_method = None):
+    def __init__(self, vocab_size):
         super().__init__()
-        self.attn_type = attn_type # global, local (Luong 2015)
-        self.attn_method = attn_method # dot, global
+        self.attn_type = "global" # global, local
+        self.attn_method = "dot" # dot, general
         self.attn_feed = True # input feeding
-        self.attn_hidden = Var(zeros(BATCH_SIZE, 1, HIDDEN_SIZE))
+        self.attn_hidden = None # attentional hidden state
 
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
         self.rnn = nn.GRU( # LSTM or GRU
-            input_size = EMBED_SIZE + HIDDEN_SIZE if self.attn_feed else 0,
+            input_size = EMBED_SIZE + (HIDDEN_SIZE if self.attn_feed else 0),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -109,7 +109,7 @@ class decoder(nn.Module):
             c = a.bmm(enc_out) # context vector
             h = torch.cat((h, c), -1)
             h = F.tanh(self.Wc(h)) # attentional vector
-            self.attn_hiden = h
+            self.attn_hidden = h
         elif self.attn_type == "local":
             # TODO
             pass
