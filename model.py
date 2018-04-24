@@ -65,15 +65,12 @@ class encoder(nn.Module):
 class decoder(nn.Module):
     def __init__(self, vocab_size):
         super().__init__()
-        self.attn_type = "global" # global, local
-        self.attn_method = "dot" # dot, general
-        self.attn_feed = True # input feeding
-        self.attn_hidden = None # attentional hidden state
+        self.input_feed = True # input feeding
 
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
         self.rnn = nn.GRU( # LSTM or GRU
-            input_size = EMBED_SIZE + (HIDDEN_SIZE if self.attn_feed else 0),
+            input_size = EMBED_SIZE + (HIDDEN_SIZE if self.input_feed else 0),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -81,13 +78,7 @@ class decoder(nn.Module):
             dropout = DROPOUT,
             bidirectional = BIDIRECTIONAL
         )
-        if self.attn_type == "global":
-            if self.attn_method == "general":
-                self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
-            self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
-        elif self.attn_type == "local":
-            # TODO
-            pass
+        self.attn = attn()
         self.out = nn.Linear(HIDDEN_SIZE, vocab_size)
         self.softmax = nn.LogSoftmax(-1)
 
@@ -96,26 +87,47 @@ class decoder(nn.Module):
 
     def forward(self, dec_in, enc_out = None, x_mask = None):
         dec_in = self.embed(dec_in)
-        if self.attn_feed:
-            dec_in = torch.cat((dec_in, self.attn_hidden), 2)
+        if self.input_feed:
+            dec_in = torch.cat((dec_in, self.attn.hidden), 2)
         h, _ = self.rnn(dec_in, self.hidden)
-        if self.attn_type == "global":
-            if self.attn_method == "dot":
+        if self.attn:
+            h = self.attn(h, enc_out, x_mask)
+        y = self.out(h).squeeze(1)
+        y = self.softmax(y)
+        return y
+
+class attn(nn.Module): # attention layer (Luong 2015)
+    def __init__(self):
+        super().__init__()
+        self.type = "global" # global, local
+        self.method = "dot" # dot, general
+        self.hidden = None # attentional hidden state
+
+        # architecture
+        if self.type == "global":
+            if self.method == "general":
+                self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
+            self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
+        elif self.type == "local":
+            # TODO
+            pass
+
+    def forward(self, h, enc_out, x_mask):
+        if self.type == "global":
+            if self.method == "dot":
                 a = h.bmm(enc_out.transpose(1, 2))
-            elif self.attn_method == "general":
+            elif self.method == "general":
                 a = h.bmm(self.Wa(enc_out).transpose(1, 2))
             a.masked_fill_(Var(1 - x_mask.unsqueeze(1)), -10000)
             a = F.softmax(a, dim = -1) # alignment weights
             c = a.bmm(enc_out) # context vector
             h = torch.cat((h, c), -1)
             h = F.tanh(self.Wc(h)) # attentional vector
-            self.attn_hidden = h
-        elif self.attn_type == "local":
+        elif self.type == "local":
             # TODO
             pass
-        y = self.out(h).squeeze(1)
-        y = self.softmax(y)
-        return y
+        self.hidden = h
+        return h
 
 def Tensor(*args):
     x = torch.Tensor(*args)
