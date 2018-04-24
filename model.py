@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable as Var
 
 BATCH_SIZE = 64
-EMBED_SIZE = 100
+EMBED_SIZE = 300
 HIDDEN_SIZE = 1000
 NUM_LAYERS = 2
 DROPOUT = 0.5
@@ -13,6 +13,7 @@ BIDIRECTIONAL = True
 NUM_DIRS = 2 if BIDIRECTIONAL else 1
 LEARNING_RATE = 0.01
 WEIGHT_DECAY = 1e-4
+TEACHER_FORCING = 0.5
 VERBOSE = False
 SAVE_EVERY = 10
 
@@ -101,7 +102,7 @@ class attn(nn.Module): # attention layer (Luong 2015)
         super().__init__()
         self.type = "global" # global, local
         self.method = "dot" # dot, general
-        self.hidden = None # attentional hidden state
+        self.hidden = None # attentional hidden state for input feeding
 
         # architecture
         if self.type == "global":
@@ -109,8 +110,7 @@ class attn(nn.Module): # attention layer (Luong 2015)
                 self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
             self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
         elif self.type == "local":
-            # TODO
-            pass
+            pass # TODO
 
     def forward(self, h, enc_out, x_mask):
         if self.type == "global":
@@ -124,8 +124,7 @@ class attn(nn.Module): # attention layer (Luong 2015)
             h = torch.cat((h, c), -1)
             h = F.tanh(self.Wc(h)) # attentional vector
         elif self.type == "local":
-            # TODO
-            pass
+            pass # TODO
         self.hidden = h
         return h
 
