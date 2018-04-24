@@ -47,7 +47,8 @@ def predict():
     for line in fo:
         line = line.strip()
         tokens = tokenize(line, "word")
-        data.append([line, [vocab_src[i] for i in tokens] + [EOS_IDX], []])
+        x = [vocab_src[i] for i in tokens] + [EOS_IDX]
+        data.append([line, x, []])
         if len(data) == BATCH_SIZE:
             result = run_model(enc, dec, vocab_tgt, data)
             for x in result:
