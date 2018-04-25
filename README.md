@@ -4,7 +4,7 @@ A PyTorch implementation of encoder-decoder RNNs for sequence to sequence learni
 
 Supported features:
 - Mini-batch training with CUDA
-- Global attention (Luong 2015)
+- Global and local attention (Luong 2015)
 - Input feeding (Luong 2015)
 
 ## Usage

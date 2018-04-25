@@ -101,7 +101,7 @@ class attn(nn.Module): # attention layer (Luong 2015)
     def __init__(self):
         super().__init__()
         self.type = "global" # global, local
-        self.method = "dot" # dot, general
+        self.method = "dot" # (global) dot, general, concat, (local) monotonic, predictive
         self.hidden = None # attentional hidden state for input feeding
 
         # architecture
@@ -114,12 +114,7 @@ class attn(nn.Module): # attention layer (Luong 2015)
 
     def forward(self, h, enc_out, x_mask):
         if self.type == "global":
-            if self.method == "dot":
-                a = h.bmm(enc_out.transpose(1, 2))
-            elif self.method == "general":
-                a = h.bmm(self.Wa(enc_out).transpose(1, 2))
-            a.masked_fill_(Var(1 - x_mask.unsqueeze(1)), -10000)
-            a = F.softmax(a, dim = -1) # alignment weights
+            a = self.align(h, enc_out, x_mask) # alignment vector
             c = a.bmm(enc_out) # context vector
             h = torch.cat((h, c), -1)
             h = F.tanh(self.Wc(h)) # attentional vector
@@ -127,6 +122,16 @@ class attn(nn.Module): # attention layer (Luong 2015)
             pass # TODO
         self.hidden = h
         return h
+
+    def align(self, ht, hs, x_mask): # alignment function
+        if self.method == "dot":
+            a = ht.bmm(hs.transpose(1, 2))
+        elif self.method == "general":
+            a = ht.bmm(self.Wa(hs).transpose(1, 2))
+        elif self.method == "concat":
+            pass # TODO
+        a.masked_fill_(Var(1 - x_mask.unsqueeze(1)), -10000) # masking in log space
+        return F.softmax(a, dim = -1) # alignment weights
 
 def Tensor(*args):
     x = torch.Tensor(*args)
