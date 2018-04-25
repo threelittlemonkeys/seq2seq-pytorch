@@ -100,26 +100,20 @@ class decoder(nn.Module):
 class attn(nn.Module): # attention layer (Luong 2015)
     def __init__(self):
         super().__init__()
-        self.type = "global" # global, local
-        self.method = "dot" # (global) dot, general, concat, (local) monotonic, predictive
+        self.type = "global" # attention scope (global, local-m, local-p)
+        self.method = "dot" # alignment method (dot, general, concat)
         self.hidden = None # attentional hidden state for input feeding
 
         # architecture
-        if self.type == "global":
-            if self.method == "general":
-                self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
-            self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
-        elif self.type == "local":
-            pass # TODO
+        if self.method == "general":
+            self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
+        self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
 
     def forward(self, h, enc_out, x_mask):
-        if self.type == "global":
-            a = self.align(h, enc_out, x_mask) # alignment vector
-            c = a.bmm(enc_out) # context vector
-            h = torch.cat((h, c), -1)
-            h = F.tanh(self.Wc(h)) # attentional vector
-        elif self.type == "local":
-            pass # TODO
+        a = self.align(h, enc_out, x_mask) # alignment vector
+        c = a.bmm(enc_out) # context vector
+        h = torch.cat((h, c), -1)
+        h = F.tanh(self.Wc(h)) # attentional vector
         self.hidden = h
         return h
 
