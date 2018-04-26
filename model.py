@@ -54,8 +54,8 @@ class encoder(nn.Module):
             return (Var(h), Var(c))
         return Var(h)
 
-    def forward(self, x, x_mask):
-        lens = [sum(seq) for seq in x_mask]
+    def forward(self, x, mask):
+        lens = [sum(seq) for seq in mask]
         self.hidden = self.init_hidden("GRU") # LSTM or GRU
         x = self.embed(x)
         x = nn.utils.rnn.pack_padded_sequence(x, lens, batch_first = True)
@@ -66,12 +66,12 @@ class encoder(nn.Module):
 class decoder(nn.Module):
     def __init__(self, vocab_size):
         super().__init__()
-        self.input_feed = True # input feeding
+        self.feed = True # input feeding
 
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
         self.rnn = nn.GRU( # LSTM or GRU
-            input_size = EMBED_SIZE + (HIDDEN_SIZE if self.input_feed else 0),
+            input_size = EMBED_SIZE + (HIDDEN_SIZE if self.feed else 0),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -86,13 +86,13 @@ class decoder(nn.Module):
         if CUDA:
             self = self.cuda()
 
-    def forward(self, dec_in, enc_out = None, x_mask = None):
+    def forward(self, dec_in, enc_out = None, t = None, mask = None):
         dec_in = self.embed(dec_in)
-        if self.input_feed:
+        if self.feed:
             dec_in = torch.cat((dec_in, self.attn.hidden), 2)
         h, _ = self.rnn(dec_in, self.hidden)
         if self.attn:
-            h = self.attn(h, enc_out, x_mask)
+            h = self.attn(h, enc_out, t, mask)
         y = self.out(h).squeeze(1)
         y = self.softmax(y)
         return y
@@ -100,31 +100,42 @@ class decoder(nn.Module):
 class attn(nn.Module): # attention layer (Luong 2015)
     def __init__(self):
         super().__init__()
-        self.type = "global" # attention scope (global, local-m, local-p)
-        self.method = "dot" # alignment method (dot, general, concat)
+        self.type = "local-m" # global, local-m, local-p
+        self.method = "general" # dot, general, concat
         self.hidden = None # attentional hidden state for input feeding
 
         # architecture
+        if self.type.startswith("local"):
+            self.pt = 0
+            self.window_size = 5
         if self.method == "general":
             self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
         self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
 
-    def forward(self, h, enc_out, x_mask):
-        a = self.align(h, enc_out, x_mask) # alignment vector
-        c = a.bmm(enc_out) # context vector
-        h = torch.cat((h, c), -1)
-        h = F.tanh(self.Wc(h)) # attentional vector
-        self.hidden = h
-        return h
+    def forward(self, ht, hs, t, mask):
+        if self.type.startswith("local"):
+            hs, mask = self.window(hs, mask, t)
+        a = self.align(ht, hs, mask) # alignment vector
+        c = a.bmm(hs) # context vector
+        self.hidden = F.tanh(self.Wc(torch.cat((c, ht), -1))) # attentional vector
+        return self.hidden
 
-    def align(self, ht, hs, x_mask): # alignment function
+    def window(self, hs, mask, t):
+        if self.type[-1] == "m": # monotonic
+            p0 = min(hs.size(1) - self.window_size, max(0, t - self.window_size))
+            p1 = min(hs.size(1), t + 1 + self.window_size)
+            return hs[:, p0:p1], mask[:, p0:p1]
+        if self.type[-1] == "p": # predicative
+            pass # TODO
+
+    def align(self, ht, hs, mask):
         if self.method == "dot":
             a = ht.bmm(hs.transpose(1, 2))
         elif self.method == "general":
             a = ht.bmm(self.Wa(hs).transpose(1, 2))
         elif self.method == "concat":
             pass # TODO
-        a.masked_fill_(Var(1 - x_mask.unsqueeze(1)), -10000) # masking in log space
+        a.masked_fill_(Var(1 - mask.unsqueeze(1)), -10000) # masking in log space
         return F.softmax(a, dim = -1) # alignment weights
 
 def Tensor(*args):
