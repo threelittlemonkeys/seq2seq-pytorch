@@ -55,10 +55,9 @@ class encoder(nn.Module):
         return Var(h)
 
     def forward(self, x, mask):
-        lens = [sum(seq) for seq in mask]
         self.hidden = self.init_hidden("GRU") # LSTM or GRU
         x = self.embed(x)
-        x = nn.utils.rnn.pack_padded_sequence(x, lens, batch_first = True)
+        x = nn.utils.rnn.pack_padded_sequence(x, mask[1], batch_first = True)
         y, _ = self.rnn(x, self.hidden)
         y, _ = nn.utils.rnn.pad_packed_sequence(y, batch_first = True)
         return y
@@ -66,12 +65,12 @@ class encoder(nn.Module):
 class decoder(nn.Module):
     def __init__(self, vocab_size):
         super().__init__()
-        self.feed = True # input feeding
+        self.feed_input = True # input feeding
 
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
         self.rnn = nn.GRU( # LSTM or GRU
-            input_size = EMBED_SIZE + (HIDDEN_SIZE if self.feed else 0),
+            input_size = EMBED_SIZE + (HIDDEN_SIZE if self.feed_input else 0),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -88,7 +87,7 @@ class decoder(nn.Module):
 
     def forward(self, dec_in, enc_out = None, t = None, mask = None):
         dec_in = self.embed(dec_in)
-        if self.feed:
+        if self.feed_input:
             dec_in = torch.cat((dec_in, self.attn.hidden), 2)
         h, _ = self.rnn(dec_in, self.hidden)
         if self.attn:
@@ -100,33 +99,38 @@ class decoder(nn.Module):
 class attn(nn.Module): # attention layer (Luong 2015)
     def __init__(self):
         super().__init__()
-        self.type = "local-m" # global, local-m, local-p
-        self.method = "general" # dot, general, concat
+        self.type = "local-p" # global, local-m, local-p
+        self.method = "dot" # dot, general, concat
         self.hidden = None # attentional hidden state for input feeding
 
         # architecture
         if self.type.startswith("local"):
-            self.pt = 0
             self.window_size = 5
+            if self.type[-1] == "p":
+                self.Wp = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
+                self.Vp = nn.Linear(HIDDEN_SIZE, 1)
         if self.method == "general":
             self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
         self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
 
-    def forward(self, ht, hs, t, mask):
-        if self.type.startswith("local"):
-            hs, mask = self.window(hs, mask, t)
-        a = self.align(ht, hs, mask) # alignment vector
-        c = a.bmm(hs) # context vector
-        self.hidden = F.tanh(self.Wc(torch.cat((c, ht), -1))) # attentional vector
-        return self.hidden
-
-    def window(self, hs, mask, t):
+    def window(self, ht, hs, t, mask):
         if self.type[-1] == "m": # monotonic
             p0 = min(hs.size(1) - self.window_size, max(0, t - self.window_size))
             p1 = min(hs.size(1), t + 1 + self.window_size)
-            return hs[:, p0:p1], mask[:, p0:p1]
+            return hs[:, p0:p1], mask[0][:, p0:p1]
         if self.type[-1] == "p": # predicative
-            pass # TODO
+            S = Var(Tensor(mask[1]))
+            pt = (S * F.sigmoid(self.Vp(F.tanh(self.Wp(ht)))).view(-1)).int()
+            hs_windowed = []
+            mask_windowed = []
+            for i in range(BATCH_SIZE):
+                s = int(scalar(S[i]))
+                p = int(scalar(pt[i]))
+                p0 = min(s - self.window_size, max(0, p - self.window_size))
+                p1 = min(s, p + 1 + self.window_size)
+                hs_windowed.append(hs[i, p0:p1].unsqueeze(0))
+                mask_windowed.append(mask[0][i, p0:p1].unsqueeze(0))
+            return torch.cat(hs_windowed), torch.cat(mask_windowed)
 
     def align(self, ht, hs, mask):
         if self.method == "dot":
@@ -137,6 +141,17 @@ class attn(nn.Module): # attention layer (Luong 2015)
             pass # TODO
         a.masked_fill_(Var(1 - mask.unsqueeze(1)), -10000) # masking in log space
         return F.softmax(a, dim = -1) # alignment weights
+
+    def forward(self, ht, hs, t, mask):
+        if self.type.startswith("local"):
+            hs, mask = self.window(ht, hs, t, mask)
+        else:
+            mask = mask[0]
+        a = self.align(ht, hs, mask) # alignment vector
+        c = a.bmm(hs) # context vector
+        h = torch.cat((c, ht), -1)
+        self.hidden = F.tanh(self.Wc(h)) # attentional vector
+        return self.hidden
 
 def Tensor(*args):
     x = torch.Tensor(*args)

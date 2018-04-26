@@ -62,7 +62,8 @@ def train():
         timer = time.time()
         for x, y in data:
             loss = 0
-            mask = x.data.gt(0) # input mask
+            mask = x.data.gt(0)
+            mask = (mask, [sum(seq) for seq in mask]) # input mask and lengths
             enc.zero_grad()
             dec.zero_grad()
             if VERBOSE:
