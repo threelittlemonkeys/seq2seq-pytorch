@@ -104,7 +104,7 @@ class attn(nn.Module): # attention layer (Luong 2015)
         self.hidden = None # attentional hidden state for input feeding
 
         # architecture
-        if self.type.startswith("local"):
+        if self.type[:5] == "local":
             self.window_size = 5
             if self.type[-1] == "p":
                 self.Wp = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
@@ -115,24 +115,35 @@ class attn(nn.Module): # attention layer (Luong 2015)
 
     def window(self, ht, hs, t, mask):
         if self.type[-1] == "m": # monotonic
-            p0 = min(hs.size(1) - self.window_size, max(0, t - self.window_size))
+            p0 = max(0, min(t - self.window_size, hs.size(1) - self.window_size))
             p1 = min(hs.size(1), t + 1 + self.window_size)
             return hs[:, p0:p1], mask[0][:, p0:p1]
         if self.type[-1] == "p": # predicative
-            S = Var(Tensor(mask[1]))
-            pt = (S * F.sigmoid(self.Vp(F.tanh(self.Wp(ht)))).view(-1)).int()
-            hs_windowed = []
-            mask_windowed = []
+            S = Var(Tensor(mask[1])) # source sequence length
+            pt = S * F.sigmoid(self.Vp(F.tanh(self.Wp(ht)))).view(-1)
+            hs_w = []
+            mask_w = []
+            k = [] # truncated Gaussian distribution as kernel function
             for i in range(BATCH_SIZE):
-                s = int(scalar(S[i]))
-                p = int(scalar(pt[i]))
-                p0 = min(s - self.window_size, max(0, p - self.window_size))
-                p1 = min(s, p + 1 + self.window_size)
-                hs_windowed.append(hs[i, p0:p1].unsqueeze(0))
-                mask_windowed.append(mask[0][i, p0:p1].unsqueeze(0))
-            return torch.cat(hs_windowed), torch.cat(mask_windowed)
+                p = int(scalar(S[i]))
+                seq_len = mask[1][i]
+                min_len = mask[1][-1]
+                p0 = max(0, min(p - self.window_size, seq_len - self.window_size))
+                p1 = min(seq_len, p + 1 + self.window_size)
+                if min_len < p1 - p0:
+                    p0 = 0
+                    p1 = min_len
+                hs_w.append(hs[i, p0:p1])
+                mask_w.append(mask[0][i, p0:p1])
+                sd = (p1 - p0) / 2 # standard deviation
+                v = [torch.exp(-(j - pt[i]).pow(2) / (2 * sd ** 2)) for j in range(p0, p1)]
+                k.append(torch.cat(v))
+            hs_w = torch.cat(hs_w).view(BATCH_SIZE, -1, 1000)
+            mask_w = torch.cat(mask_w).view(BATCH_SIZE, -1)
+            k = torch.cat(k).view(BATCH_SIZE, 1, -1)
+            return hs_w, mask_w, pt, k
 
-    def align(self, ht, hs, mask):
+    def align(self, ht, hs, mask, k):
         if self.method == "dot":
             a = ht.bmm(hs.transpose(1, 2))
         elif self.method == "general":
@@ -140,14 +151,21 @@ class attn(nn.Module): # attention layer (Luong 2015)
         elif self.method == "concat":
             pass # TODO
         a.masked_fill_(Var(1 - mask.unsqueeze(1)), -10000) # masking in log space
-        return F.softmax(a, dim = -1) # alignment weights
+        a = F.softmax(a, dim = -1)
+        if self.type == "local-p":
+            a = a * k
+        return a # alignment weights
 
     def forward(self, ht, hs, t, mask):
-        if self.type.startswith("local"):
-            hs, mask = self.window(ht, hs, t, mask)
+        if self.type == "local-p":
+            hs, mask, pt, k = self.window(ht, hs, t, mask)
         else:
-            mask = mask[0]
-        a = self.align(ht, hs, mask) # alignment vector
+            if self.type == "local-m":
+                hs, mask = self.window(ht, hs, t, mask)
+            else:
+                mask = mask[0]
+            k = None
+        a = self.align(ht, hs, mask, k) # alignment vector
         c = a.bmm(hs) # context vector
         h = torch.cat((c, ht), -1)
         self.hidden = F.tanh(self.Wc(h)) # attentional vector
