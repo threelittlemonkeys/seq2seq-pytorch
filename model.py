@@ -106,7 +106,7 @@ class attn(nn.Module): # attention layer (Luong 2015)
         # architecture
         if self.type[:5] == "local":
             self.window_size = 5
-            elif self.type[-1] == "p":
+            if self.type[-1] == "p":
                 self.Wp = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
                 self.Vp = nn.Linear(HIDDEN_SIZE, 1)
         if self.method == "general":

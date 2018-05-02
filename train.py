@@ -20,6 +20,7 @@ def load_data():
         src, tgt = line.split("\t")
         src = [int(i) for i in src.split(" ")] + [EOS_IDX]
         tgt = [int(i) for i in tgt.split(" ")] + [EOS_IDX]
+        # src.reverse() # reversing source sequence
         if len(src) > batch_len_src:
             batch_len_src = len(src)
         if len(tgt) > batch_len_tgt:
