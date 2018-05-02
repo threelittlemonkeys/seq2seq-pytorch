@@ -7,7 +7,7 @@ from torch.autograd import Variable as Var
 BATCH_SIZE = 128
 EMBED_SIZE = 500
 HIDDEN_SIZE = 1000
-NUM_LAYERS = 4
+NUM_LAYERS = 2
 DROPOUT = 0.5
 BIDIRECTIONAL = True
 NUM_DIRS = 2 if BIDIRECTIONAL else 1
@@ -99,8 +99,8 @@ class decoder(nn.Module):
 class attn(nn.Module): # attention layer (Luong 2015)
     def __init__(self):
         super().__init__()
-        self.type = "local-m" # global, local-m, local-p
-        self.method = "general" # dot, general, concat
+        self.type = "global" # global, local-m, local-p
+        self.method = "dot" # dot, general, concat
         self.hidden = None # attentional hidden state for input feeding
 
         # architecture

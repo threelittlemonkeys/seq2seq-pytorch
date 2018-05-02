@@ -71,7 +71,8 @@ def train():
             enc_out = enc(x, mask)
             dec_in = Var(LongTensor([SOS_IDX] * BATCH_SIZE)).unsqueeze(1)
             dec.hidden = enc.hidden
-            dec.attn.hidden = Var(zeros(BATCH_SIZE, 1, HIDDEN_SIZE)) # for input feeding
+            if dec.feed_input:
+                dec.attn.hidden = Var(zeros(BATCH_SIZE, 1, HIDDEN_SIZE))
             for t in range(y.size(1)):
                 dec_out = dec(dec_in, enc_out, t, mask)
                 loss += F.nll_loss(dec_out, y[:, t], size_average = False, ignore_index = PAD_IDX)
