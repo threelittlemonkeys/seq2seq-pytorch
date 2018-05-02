@@ -82,7 +82,7 @@ def train():
             loss.backward()
             enc_optim.step()
             dec_optim.step()
-            loss = scalar(loss) / len(x)
+            loss = scalar(loss)
             loss_sum += loss
         timer = time.time() - timer
         loss_sum /= len(data)
