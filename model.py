@@ -179,10 +179,6 @@ def LongTensor(*args):
     x = torch.LongTensor(*args)
     return x.cuda() if CUDA else x
 
-def randn(*args):
-    x = torch.randn(*args)
-    return x.cuda() if CUDA else x
-
 def zeros(*args):
     x = torch.zeros(*args)
     return x.cuda() if CUDA else x
