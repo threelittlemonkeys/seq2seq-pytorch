@@ -1,5 +1,5 @@
 import sys
-from model import SOS, EOS, PAD
+from model import SOS, EOS, PAD, SOS_IDX, EOS_IDX, PAD_IDX
 from utils import tokenize
 
 MIN_LENGTH = 3
@@ -7,8 +7,8 @@ MAX_LENGTH = 50
 
 def load_data():
     data = []
-    vocab_src = {PAD: 0, EOS: 1, SOS: 2}
-    vocab_tgt = {PAD: 0, EOS: 1, SOS: 2}
+    vocab_src = {PAD: PAD_IDX, EOS: EOS_IDX, SOS: SOS_IDX}
+    vocab_tgt = {PAD: PAD_IDX, EOS: EOS_IDX, SOS: SOS_IDX}
     fo = open(sys.argv[1])
     for line in fo:
         src, tgt = line.split("\t")
