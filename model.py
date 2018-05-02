@@ -4,8 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable as Var
 
-BATCH_SIZE = 64
-EMBED_SIZE = 300
+BATCH_SIZE = 128
+EMBED_SIZE = 500
 HIDDEN_SIZE = 1000
 NUM_LAYERS = 2
 DROPOUT = 0.5
@@ -189,3 +189,7 @@ def zeros(*args):
 
 def scalar(x):
     return x.view(-1).data.tolist()[0]
+
+def maskset(x):
+    mask = x.data.gt(0)
+    return (mask, [sum(seq) for seq in mask]) # set of mask and lengths

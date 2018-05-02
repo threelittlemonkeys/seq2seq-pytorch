@@ -23,13 +23,14 @@ def run_model(enc, dec, vocab_tgt, data):
     data.sort(key = lambda x: len(x[1]), reverse = True)
     batch_len = len(data[0][1])
     batch = Var(LongTensor([x[1] + [PAD_IDX] * (batch_len - len(x[1])) for x in data]))
-    x_mask = batch.data.gt(0)
-    enc_out = enc(batch, x_mask)
+    mask = maskset(batch)
+    enc_out = enc(batch, mask)
     dec_in = Var(LongTensor([SOS_IDX] * BATCH_SIZE)).unsqueeze(1)
     dec.hidden = enc.hidden
     dec.attn.hidden = Var(zeros(BATCH_SIZE, 1, HIDDEN_SIZE)) # for input feeding
+    t = 0
     while sum(eos) < z:
-        dec_out = dec(dec_in, enc_out, x_mask)
+        dec_out = dec(dec_in, enc_out, t, mask)
         dec_in = Var(dec_out.data.topk(1)[1])
         y = dec_in.view(-1).data.tolist()
         for i in range(z):
@@ -38,6 +39,7 @@ def run_model(enc, dec, vocab_tgt, data):
             data[i][2].append(vocab_tgt[y[i]])
             if y[i] == EOS_IDX:
                 eos[i] = 1
+        t += 1
     return data[:z]
 
 def predict():

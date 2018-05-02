@@ -18,19 +18,19 @@ def load_data():
     for line in fo:
         line = line.strip()
         src, tgt = line.split("\t")
-        src = [int(i) for i in src.split(" ")]
-        tgt = [int(i) for i in tgt.split(" ")]
+        src = [int(i) for i in src.split(" ")] + [EOS_IDX]
+        tgt = [int(i) for i in tgt.split(" ")] + [EOS_IDX]
         if len(src) > batch_len_src:
             batch_len_src = len(src)
         if len(tgt) > batch_len_tgt:
             batch_len_tgt = len(tgt)
-        batch_src.append(src + [EOS_IDX])
-        batch_tgt.append(tgt + [EOS_IDX])
+        batch_src.append(src)
+        batch_tgt.append(tgt)
         if len(batch_src) == BATCH_SIZE:
             for seq in batch_src:
-                seq.extend([PAD_IDX] * (batch_len_src - len(seq) + 1))
+                seq.extend([PAD_IDX] * (batch_len_src - len(seq)))
             for seq in batch_tgt:
-                seq.extend([PAD_IDX] * (batch_len_tgt - len(seq) + 1))
+                seq.extend([PAD_IDX] * (batch_len_tgt - len(seq)))
             data.append((Var(LongTensor(batch_src)), Var(LongTensor(batch_tgt))))
             batch_src = []
             batch_tgt = []
@@ -62,8 +62,7 @@ def train():
         timer = time.time()
         for x, y in data:
             loss = 0
-            mask = x.data.gt(0)
-            mask = (mask, [sum(seq) for seq in mask]) # input mask and lengths
+            mask = maskset(x)
             enc.zero_grad()
             dec.zero_grad()
             if VERBOSE:
