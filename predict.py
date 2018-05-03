@@ -22,7 +22,8 @@ def run_model(enc, dec, vocab_tgt, data):
         data.append(["", [EOS_IDX], []])
     data.sort(key = lambda x: len(x[1]), reverse = True)
     batch_len = len(data[0][1])
-    batch = Var(LongTensor([x[1] + [PAD_IDX] * (batch_len - len(x[1])) for x in data]))
+    batch = [x[1] + [PAD_IDX] * (batch_len - len(x[1])) for x in data]
+    batch = Var(LongTensor(batch))
     mask = maskset(batch)
     enc_out = enc(batch, mask)
     dec_in = Var(LongTensor([SOS_IDX] * BATCH_SIZE)).unsqueeze(1)
