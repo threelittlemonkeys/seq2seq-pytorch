@@ -27,7 +27,8 @@ def run_model(enc, dec, vocab_tgt, data):
     enc_out = enc(batch, mask)
     dec_in = Var(LongTensor([SOS_IDX] * BATCH_SIZE)).unsqueeze(1)
     dec.hidden = enc.hidden
-    dec.attn.hidden = Var(zeros(BATCH_SIZE, 1, HIDDEN_SIZE)) # for input feeding
+    if dec.feed_input:
+        dec.attn.hidden = Var(zeros(BATCH_SIZE, 1, HIDDEN_SIZE))
     t = 0
     while sum(eos) < z:
         dec_out = dec(dec_in, enc_out, t, mask)
