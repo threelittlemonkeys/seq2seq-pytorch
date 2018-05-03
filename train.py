@@ -47,8 +47,8 @@ def train():
     num_epochs = int(sys.argv[5])
     data, vocab_src, vocab_tgt = load_data()
     if VERBOSE:
-        itow_src = [word for word, _ in sorted(vocab_src.items(), key = lambda x: x[1])]
-        itow_tgt = [word for word, _ in sorted(vocab_tgt.items(), key = lambda x: x[1])]
+        itow_src = [w for w, _ in sorted(vocab_src.items(), key = lambda x: x[1])]
+        itow_tgt = [w for w, _ in sorted(vocab_tgt.items(), key = lambda x: x[1])]
     enc = encoder(len(vocab_src))
     dec = decoder(len(vocab_tgt))
     enc_optim = torch.optim.SGD(enc.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
