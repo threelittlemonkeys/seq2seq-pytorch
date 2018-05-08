@@ -13,7 +13,7 @@ def tokenize(x, unit):
     if unit == "char":
         x = re.sub(" ", "", x)
         return list(x)
-    elif unit == "word":
+    if unit == "word":
         return x.split(" ")
 
 def load_vocab(filename, ext):
