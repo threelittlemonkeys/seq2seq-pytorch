@@ -6,7 +6,7 @@ Supported features:
 - Mini-batch training with CUDA
 - Global and local attention (Luong 2015)
 - Input feeding (Luong 2015)
-- Vectorized computation of alignment scores in attention
+- Vectorized computation of alignment scores in the attention layer
 
 ## Usage
 
