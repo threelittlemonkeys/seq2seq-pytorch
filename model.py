@@ -113,7 +113,7 @@ class attn(nn.Module): # attention layer (Luong 2015)
             self.Wa = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
         self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
 
-    def window(self, ht, hs, t, mask):
+    def window(self, ht, hs, t, mask): # for local attention
         if self.type[-1] == "m": # monotonic
             p0 = max(0, min(t - self.window_size, hs.size(1) - self.window_size))
             p1 = min(hs.size(1), t + 1 + self.window_size)
