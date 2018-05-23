@@ -40,8 +40,8 @@ def load_checkpoint(filename, enc = None, dec = None, g2c = False):
     print("saved model: epoch = %d, loss = %f" % (checkpoint["epoch"], checkpoint["loss"]))
     return epoch
 
-def save_checkpoint(filename, enc, dec, epoch, loss, timer):
-    print("epoch = %d, loss = %f, time = %f" % (epoch, loss, timer))
+def save_checkpoint(filename, enc, dec, epoch, loss, time):
+    print("epoch = %d, loss = %f, time = %f" % (epoch, loss, time))
     if filename and enc and dec:
         print("saving model...")
         checkpoint = {}
