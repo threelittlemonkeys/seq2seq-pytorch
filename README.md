@@ -34,6 +34,6 @@ python predict.py model.epochN vocab.src vocab.tgt test_data
 
 ## References
 
-Dzmitry Bahdanau, Kyunghyun Cho, Yoshua Bengio. 2015. Neural Machine Translation by Jointly Learning to Align and Translate. [arXiv:1409.0473 [cs.CL]](https://arxiv.org/abs/1409.0473).
+Dzmitry Bahdanau, Kyunghyun Cho, Yoshua Bengio. 2015. [Neural Machine Translation by Jointly Learning to Align and Translate.](https://arxiv.org/abs/1409.0473) arXiv:1409.0473 [cs.CL].
 
-Minh-Thang Luong, Hieu Pham, Christopher D. Manning. 2015. Effective Approaches to Attention-based Neural Machine Translation. [arXiv:1508.04025 [cs.CL]](https://arxiv.org/abs/1508.04025).
+Minh-Thang Luong, Hieu Pham, Christopher D. Manning. 2015. [Effective Approaches to Attention-based Neural Machine Translation.](https://arxiv.org/abs/1508.04025) arXiv:1507.04025 [cs.CL].
