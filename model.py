@@ -120,7 +120,7 @@ class attn(nn.Module): # attention layer (Luong 2015)
             return hs[:, p0:p1], mask[0][:, p0:p1]
         if self.type[-1] == "p": # predicative
             S = Var(Tensor(mask[1])) # source sequence length
-            pt = S * F.sigmoid(self.Vp(F.tanh(self.Wp(ht)))).view(-1)
+            pt = S * F.sigmoid(self.Vp(F.tanh(self.Wp(ht)))).view(-1) # aligned position
             hs_w = []
             mask_w = []
             k = [] # truncated Gaussian distribution as kernel function
