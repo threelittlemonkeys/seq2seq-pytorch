@@ -96,7 +96,7 @@ class decoder(nn.Module):
         y = self.softmax(y)
         return y
 
-class attn(nn.Module): # attention layer (Luong 2015)
+class attn(nn.Module): # attention layer (Luong et al 2015)
     def __init__(self):
         super().__init__()
         self.type = "global" # global, local-m, local-p
