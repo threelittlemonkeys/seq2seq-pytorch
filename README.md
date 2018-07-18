@@ -1,4 +1,4 @@
-# Sequence to Sequence Learning in PyTorch
+# Sequence to Sequence Models in PyTorch
 
 A PyTorch implementation of encoder-decoder RNNs for sequence to sequence learning, adapted from [the PyTorch tutorial](http://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html).
 
