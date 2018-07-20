@@ -32,7 +32,7 @@ def load_data():
                 seq.extend([PAD_IDX] * (batch_len_src - len(seq)))
             for seq in batch_tgt:
                 seq.extend([PAD_IDX] * (batch_len_tgt - len(seq)))
-            data.append((Var(LongTensor(batch_src)), Var(LongTensor(batch_tgt))))
+            data.append((LongTensor(batch_src), LongTensor(batch_tgt)))
             batch_src = []
             batch_tgt = []
             batch_len_src = 0
@@ -69,17 +69,17 @@ def train():
             if VERBOSE:
                 pred = [[] for _ in range(BATCH_SIZE)]
             enc_out = enc(x, mask)
-            dec_in = Var(LongTensor([SOS_IDX] * BATCH_SIZE)).unsqueeze(1)
+            dec_in = LongTensor([SOS_IDX] * BATCH_SIZE).unsqueeze(1)
             dec.hidden = enc.hidden
             if dec.feed_input:
-                dec.attn.hidden = Var(zeros(BATCH_SIZE, 1, HIDDEN_SIZE))
+                dec.attn.hidden = zeros(BATCH_SIZE, 1, HIDDEN_SIZE)
             for t in range(y.size(1)):
                 dec_out = dec(dec_in, enc_out, t, mask)
                 loss += F.nll_loss(dec_out, y[:, t], size_average = False, ignore_index = PAD_IDX)
                 dec_in = y[:, t].unsqueeze(1) # teacher forcing
                 if VERBOSE:
                     for i, j in enumerate(dec_out.data.topk(1)[1]):
-                        pred[i].append(scalar(Var(j)))
+                        pred[i].append(scalar(j))
             loss /= y.data.gt(0).sum() # divide by the number of unpadded tokens
             loss.backward()
             enc_optim.step()

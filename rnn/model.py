@@ -2,7 +2,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable as Var
 
 BATCH_SIZE = 128
 EMBED_SIZE = 500
@@ -51,8 +50,8 @@ class encoder(nn.Module):
         h = zeros(NUM_LAYERS * NUM_DIRS, BATCH_SIZE, HIDDEN_SIZE // NUM_DIRS) # hidden states
         if rnn_type == "LSTM":
             c = zeros(NUM_LAYERS * NUM_DIRS, BATCH_SIZE, HIDDEN_SIZE // NUM_DIRS) # cell states
-            return (Var(h), Var(c))
-        return Var(h)
+            return (h, c)
+        return h
 
     def forward(self, x, mask):
         self.hidden = self.init_hidden("GRU") # LSTM or GRU
@@ -119,7 +118,7 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
             p1 = min(hs.size(1), t + 1 + self.window_size)
             return hs[:, p0:p1], mask[0][:, p0:p1]
         if self.type[-1] == "p": # predicative
-            S = Var(Tensor(mask[1])) # source sequence length
+            S = Tensor(mask[1]) # source sequence length
             pt = S * F.sigmoid(self.Vp(F.tanh(self.Wp(ht)))).view(-1) # aligned position
             hs_w = []
             mask_w = []
@@ -150,7 +149,7 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
             a = ht.bmm(self.Wa(hs).transpose(1, 2))
         elif self.method == "concat":
             pass # TODO
-        a.masked_fill_(Var(1 - mask.unsqueeze(1)), -10000) # masking in log space
+        a.masked_fill_(1 - mask.unsqueeze(1), -10000) # masking in log space
         a = F.softmax(a, dim = -1)
         if self.type == "local-p":
             a = a * k

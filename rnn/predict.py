@@ -22,18 +22,17 @@ def run_model(enc, dec, vocab_tgt, data):
         data.append(["", [EOS_IDX], []])
     data.sort(key = lambda x: len(x[1]), reverse = True)
     batch_len = len(data[0][1])
-    batch = [x[1] + [PAD_IDX] * (batch_len - len(x[1])) for x in data]
-    batch = Var(LongTensor(batch))
+    batch = LongTensor([x[1] + [PAD_IDX] * (batch_len - len(x[1])) for x in data])
     mask = maskset(batch)
     enc_out = enc(batch, mask)
-    dec_in = Var(LongTensor([SOS_IDX] * BATCH_SIZE)).unsqueeze(1)
+    dec_in = LongTensor([SOS_IDX] * BATCH_SIZE).unsqueeze(1)
     dec.hidden = enc.hidden
     if dec.feed_input:
-        dec.attn.hidden = Var(zeros(BATCH_SIZE, 1, HIDDEN_SIZE))
+        dec.attn.hidden = zeros(BATCH_SIZE, 1, HIDDEN_SIZE)
     t = 0
     while sum(eos) < z:
         dec_out = dec(dec_in, enc_out, t, mask)
-        dec_in = Var(dec_out.data.topk(1)[1])
+        dec_in = dec_out.data.topk(1)[1]
         y = dec_in.view(-1).data.tolist()
         for i in range(z):
             if eos[i]:
