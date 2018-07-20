@@ -10,6 +10,8 @@ PyTorch implementations of sequence to sequence models.
 
 Dzmitry Bahdanau, Kyunghyun Cho, Yoshua Bengio. 2015. [Neural Machine Translation by Jointly Learning to Align and Translate.](https://arxiv.org/abs/1409.0473) arXiv:1409.0473 [cs.CL].
 
+James Bradbury, Stephen Merity, Caiming Xiong, Richard Socher. 2016. [Quasi-Recurrent Neural Networks.](https://arxiv.org/abs/1611.01576) arXiv:1611.01576 [cs.NE].
+
 Kyunghyun Cho, Bart van Merrienboer, Caglar Gulcehre, Dzmitry Bahdanau, Fethi Bougares, Holger Schwenk, Yoshua Bengio. 2014. [Learning Phrase Representations using RNN Encoder-Decoder for Statistical Machine Translation.](https://arxiv.org/abs/1406.1078) arXiv:1406.1078 [cs.CL].
 
 Jonas Gehring, Michael Auli, David Grangier, Denis Yarats, Yann N. Dauphin. 2017. [Convolutional Sequence to Sequence Learning.](https://arxiv.org/abs/1705.03122) arXiv:1705.03122 [cs.CL].
