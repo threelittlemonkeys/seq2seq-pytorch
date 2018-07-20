@@ -5,29 +5,6 @@ PyTorch implementations of sequence to sequence models.
 - RNN Encoder-Decoder (Cho et al 2014; Luong et al 2015; Gu et al 2016)
 - CNNs from "Convolutional Sequence to Sequence Learning" (Gehring et al 2017)
 - The Transformer from "Attention Is All You Need" (Vaswani et all 2017)
-## Usage
-
-Training data should be formatted as below:
-```
-source_sequence \t target_sequence
-source_sequence \t target_sequence
-...
-```
-
-To prepare data:
-```
-python prepare.py training_data
-```
-
-To train:
-```
-python train.py model vocab.src vocab.tgt training_data.csv num_epoch
-```
-
-To predict:
-```
-python predict.py model.epochN vocab.src vocab.tgt test_data
-```
 
 ## References
 
