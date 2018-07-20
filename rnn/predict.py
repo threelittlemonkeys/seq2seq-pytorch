@@ -9,6 +9,8 @@ def load_model():
     vocab_tgt = [word for word, _ in sorted(vocab_tgt.items(), key = lambda x: x[1])]
     enc = encoder(len(vocab_src))
     dec = decoder(len(vocab_tgt))
+    enc.eval()
+    dec.eval()
     print(enc)
     print(dec)
     load_checkpoint(sys.argv[1], enc, dec)
