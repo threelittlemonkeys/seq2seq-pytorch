@@ -1,7 +1,6 @@
 # The Transformer in PyTorch
 
 A PyTorch implementation of the Transformer for sequence to sequence learning.
-# RNN Encoder-Decoder in PyTorch
 
 Supported features:
 - Mini-batch training with CUDA
