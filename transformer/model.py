@@ -5,8 +5,6 @@ import torch.nn.functional as F
 BATCH_SIZE = 128
 EMBED_SIZE = 512 # representation dimension
 NUM_LAYERS = 6
-NUM_HEADS = 8
-HEAD_DIM = EMBED_SIZE // NUM_HEADS # head dimension
 DROPOUT = 0.5
 LEARNING_RATE = 0.01
 WEIGHT_DECAY = 1e-4
@@ -63,19 +61,20 @@ class enc_layer(nn.Module): # encoder layer
 class attn(nn.Module): # multi-head attention
     def __init__(self, vocab_size):
         super().__init__()
+        self.h = 8 # number of heads
+        self.d = EMBED_SIZE // self.h # head dimension
 
-    # architecture
-        self.Wq = nn.Linear(EMBED_SIZE, HEAD_DIM)
-        self.Wk = nn.Linear(EMBED_SIZE, HEAD_DIM)
-        self.Wv = nn.Linear(EMBED_SIZE, HEAD_DIM)
+        # architecture
+        self.Wq = nn.Linear(EMBED_SIZE, self.h * self.d)
+        self.Wk = nn.Linear(EMBED_SIZE, self.h * self.d)
+        self.Wv = nn.Linear(EMBED_SIZE, self.h * self.d)
 
     def forward(self, x):
-        x = x.unsqueeze(1).repeat(1, NUM_HEADS, 1, 1)
-        Q = self.Wq(x) # queries
-        K = self.Wk(x) # keys
-        V = self.Wv(x) # values
-        print(Q.size(), K.size(), V.size())
-        exit()
+        print("x", x.size())
+        q = self.Wq(x).view(BATCH_SIZE * self.h, -1, self.d) # queries
+        k = self.Wk(x).view(BATCH_SIZE * self.h, -1, self.d) # keys
+        v = self.Wv(x).view(BATCH_SIZE * self.h, -1, self.d) # values
+        score = q.bmm(k.transpose(1, 2))
         return x
 
 def Tensor(*args):
