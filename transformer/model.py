@@ -73,14 +73,14 @@ class attn(nn.Module): # multi-head attention
     def forward(self, x, mask):
         h = x.unsqueeze(1)
         q = torch.matmul(h, self.Wq) # query
-        k = torch.matmul(h, self.Wq) # key 
-        v = torch.matmul(h, self.Wq) # value
+        k = torch.matmul(h, self.Wk) # key 
+        v = torch.matmul(h, self.Wv) # value
         # scaled dot-product attention
         score = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(self.d)
         # mask
         score = F.softmax(score, 2)
         score = torch.matmul(score, v)
-        score = score.transpose(1, 2).contiguous().view(x.size())
+        score = score.transpose(1, 2).contiguous().view_as(x)
         print(score.size())
         exit()
 
