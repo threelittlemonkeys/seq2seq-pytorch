@@ -110,8 +110,7 @@ class ffn(nn.Module): # position-wise feed-forward networks
         )
 
     def forward(self, x):
-        y = self.layers(x)
-        return y
+        return self.layers(x)
 
 def Tensor(*args):
     x = torch.Tensor(*args)
