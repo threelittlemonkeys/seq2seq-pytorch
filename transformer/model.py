@@ -57,16 +57,15 @@ class encoder_layer(nn.Module):
         # architecture
         self.attn = attn_mh(8, EMBED_SIZE // 8)
         self.ffn = ffn(2048)
-        self.norm = layer_norm(EMBED_SIZE)
         self.dropout = nn.Dropout(DROPOUT)
-
-    def res_block(self, x, z): # residual connection
-        z = self.dropout(z) # residual dropout
-        return self.norm(x + z)
+        self.res = lambda x, z: x + self.dropout(z) # residual connection and dropout
+        self.norm = nn.LayerNorm(EMBED_SIZE)
 
     def forward(self, x, mask):
-        z = self.res_block(x, self.attn(x, mask))
-        z = self.res_block(z, self.ffn(z))
+        z = self.attn(x, mask)
+        z = self.norm(self.res(x, z))
+        z = self.ffn(z)
+        z = self.norm(self.res(x, z))
         return z
 
 class attn_mh(nn.Module): # multi-head self-attention
@@ -113,18 +112,6 @@ class ffn(nn.Module): # position-wise feed-forward networks
     def forward(self, x):
         y = self.layers(x)
         return y
-
-class layer_norm(nn.Module): # layer normalization (Ba et al 2016)
-    def __init__(self, H, eps = 1e-6):
-        super().__init__()
-        self.g = nn.Parameter(torch.ones(H))
-        self.b = nn.Parameter(torch.zeros(H))
-        self.eps = eps
-
-    def forward(self, x):
-        mean = x.mean(-1, keepdim = True)
-        std = x.std(-1, keepdim = True)
-        return self.g * (x - mean) / (std + self.eps) + self.b
 
 def Tensor(*args):
     x = torch.Tensor(*args)
