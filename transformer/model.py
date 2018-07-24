@@ -42,51 +42,79 @@ class encoder(nn.Module):
 
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
-        self.layers = nn.ModuleList([enc_layer(vocab_size) for _ in range(NUM_LAYERS)])
+        self.layers = nn.ModuleList([enc_layer() for _ in range(NUM_LAYERS)])
 
     def forward(self, x, mask):
         x = self.embed(x)
         for layer in self.layers:
             x = layer(x, mask)
+            print(x.size())
 
 class enc_layer(nn.Module): # encoder layer
-    def __init__(self, vocab_size):
+    def __init__(self):
         super().__init__()
 
         # architecture
-        self.attn = attn(vocab_size)
+        self.attn = attn()
+        self.ffn = ffn()
 
     def forward(self, x, mask):
-        self.attn(x, mask)
+        h = self.attn(x, mask)
+        h = self.ffn(h)
+        return h
 
-class attn(nn.Module): # multi-head attention
-    def __init__(self, vocab_size):
+class attn(nn.Module): # multi-head self-attention
+    def __init__(self):
         super().__init__()
         self.h = 8 # number of heads
         self.d = EMBED_SIZE // self.h # dimension of each head
 
         # architecture
-        self.Wq = nn.Parameter(Tensor(self.h, EMBED_SIZE, self.d))
-        self.Wk = nn.Parameter(Tensor(self.h, EMBED_SIZE, self.d))
-        self.Wv = nn.Parameter(Tensor(self.h, EMBED_SIZE, self.d))
+        self.Wq = nn.Linear(EMBED_SIZE, self.h * self.d)
+        self.Wk = nn.Linear(EMBED_SIZE, self.h * self.d)
+        self.Wv = nn.Linear(EMBED_SIZE, self.h * self.d)
+        self.Wo = nn.Linear(self.h * self.d, EMBED_SIZE)
 
-        for p in self.parameters():
-            nn.init.xavier_normal(p)
-
-    def forward(self, x, mask):
-        x1 = x.unsqueeze(1)
-        q = torch.matmul(x1, self.Wq) # query
-        k = torch.matmul(x1, self.Wk) # key 
-        v = torch.matmul(x1, self.Wv) # value
-        # scaled dot-product attention
+    def sdp(self, q, k, v, mask): # scaled dot-product attention
         score = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(self.d)
-        # masking
         mask = mask[0].unsqueeze(1).unsqueeze(3).expand_as(score)
-        score = score.masked_fill(1 - mask, -10000)
+        score = score.masked_fill(1 - mask, -10000) # masking in log space
         score = F.softmax(score, 2)
         score = torch.matmul(score, v)
-        score = score.transpose(1, 2).contiguous().view_as(x)
-        exit()
+        return score
+
+    def forward(self, x, mask):
+        q = self.Wq(x).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
+        k = self.Wk(x).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
+        v = self.Wv(x).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
+        score = self.sdp(q, k, v, mask)
+        score = score.transpose(1, 2).contiguous().view(BATCH_SIZE, -1, self.h * self.d)
+        score = self.Wo(score)
+        return score
+
+class ffn(nn.Module): # position-wise feed-forward networks
+    def __init__(self):
+        super().__init__()
+        d = 2048
+
+        # architecture
+        self.layers = nn.Sequential(
+            nn.Linear(EMBED_SIZE, d),
+            nn.ReLU(),
+            nn.Linear(d, EMBED_SIZE),
+            nn.Dropout(DROPOUT)
+        )
+
+    def forward(self, x):
+        y = self.layers(x)
+        return y
+
+class layer_norm(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        pass
 
 def Tensor(*args):
     x = torch.Tensor(*args)

@@ -8,6 +8,8 @@ PyTorch implementations of sequence to sequence models.
 
 ## References
 
+Jimmy Lei Ba, Jamie Ryan Kiros, Geoffrey E. Hinton. 2016. [Layer Normalization.](https://arxiv.org/abs/1607.06450) arXiv:1607.06450 [stat.ML].
+
 Dzmitry Bahdanau, Kyunghyun Cho, Yoshua Bengio. 2015. [Neural Machine Translation by Jointly Learning to Align and Translate.](https://arxiv.org/abs/1409.0473) arXiv:1409.0473 [cs.CL].
 
 James Bradbury, Stephen Merity, Caiming Xiong, Richard Socher. 2016. [Quasi-Recurrent Neural Networks.](https://arxiv.org/abs/1611.01576) arXiv:1611.01576 [cs.NE].
