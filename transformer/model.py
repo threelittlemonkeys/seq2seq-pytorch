@@ -55,8 +55,8 @@ class encoder_layer(nn.Module):
         super().__init__()
 
         # architecture
-        self.attn = attn()
-        self.ffn = ffn()
+        self.attn = attn_mh(8, EMBED_SIZE // 8)
+        self.ffn = ffn(2048)
         self.norm = layer_norm(EMBED_SIZE)
         self.dropout = nn.Dropout(DROPOUT)
 
@@ -69,11 +69,11 @@ class encoder_layer(nn.Module):
         z = self.res_block(z, self.ffn(z))
         return z
 
-class attn(nn.Module): # multi-head self-attention
-    def __init__(self):
+class attn_mh(nn.Module): # multi-head self-attention
+    def __init__(self, h, d):
         super().__init__()
-        self.h = 8 # number of heads
-        self.d = EMBED_SIZE // self.h # dimension of each head
+        self.h = h # number of heads
+        self.d = d # dimension of each head
 
         # architecture
         self.Wq = nn.Linear(EMBED_SIZE, self.h * self.d)
@@ -81,27 +81,26 @@ class attn(nn.Module): # multi-head self-attention
         self.Wv = nn.Linear(EMBED_SIZE, self.h * self.d)
         self.Wo = nn.Linear(self.h * self.d, EMBED_SIZE)
 
-    def sdp(self, q, k, v, mask): # scaled dot-product attention
-        score = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(self.d)
-        mask = mask[0].unsqueeze(1).unsqueeze(3).expand_as(score)
-        score = score.masked_fill(1 - mask, -10000) # masking in log space
-        score = F.softmax(score, 2)
-        score = torch.matmul(score, v)
-        return score
+    def attn_sdp(self, q, k, v, mask): # scaled dot-product attention
+        a = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(self.d)
+        mask = mask[0].unsqueeze(1).unsqueeze(3).expand_as(a)
+        a = a.masked_fill(1 - mask, -10000) # masking in log space
+        a = F.softmax(a, 2)
+        a = torch.matmul(a, v)
+        return a # attention weights
 
     def forward(self, x, mask):
         q = self.Wq(x).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
         k = self.Wk(x).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
         v = self.Wv(x).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
-        score = self.sdp(q, k, v, mask)
-        score = score.transpose(1, 2).contiguous().view(BATCH_SIZE, -1, self.h * self.d)
-        score = self.Wo(score)
-        return score
+        z = self.attn_sdp(q, k, v, mask)
+        z = z.transpose(1, 2).contiguous().view(BATCH_SIZE, -1, self.h * self.d)
+        z = self.Wo(z)
+        return z
 
 class ffn(nn.Module): # position-wise feed-forward networks
-    def __init__(self):
+    def __init__(self, d):
         super().__init__()
-        d = 2048
 
         # architecture
         self.layers = nn.Sequential(
