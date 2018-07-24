@@ -33,7 +33,7 @@ class transformer(nn.Module):
         if CUDA:
             self = self.cuda()
 
-    def forward(self, x, mask = None):
+    def forward(self, x, mask):
         self.encoder(x, mask)
 
 class encoder(nn.Module):
@@ -70,18 +70,22 @@ class attn(nn.Module): # multi-head attention
         self.Wk = nn.Parameter(Tensor(self.h, EMBED_SIZE, self.d))
         self.Wv = nn.Parameter(Tensor(self.h, EMBED_SIZE, self.d))
 
+        for p in self.parameters():
+            nn.init.xavier_normal(p)
+
     def forward(self, x, mask):
-        h = x.unsqueeze(1)
-        q = torch.matmul(h, self.Wq) # query
-        k = torch.matmul(h, self.Wk) # key 
-        v = torch.matmul(h, self.Wv) # value
+        x1 = x.unsqueeze(1)
+        q = torch.matmul(x1, self.Wq) # query
+        k = torch.matmul(x1, self.Wk) # key 
+        v = torch.matmul(x1, self.Wv) # value
         # scaled dot-product attention
         score = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(self.d)
-        # mask
+        # masking
+        mask = mask[0].unsqueeze(1).unsqueeze(3).expand_as(score)
+        score = score.masked_fill(1 - mask, -10000)
         score = F.softmax(score, 2)
         score = torch.matmul(score, v)
         score = score.transpose(1, 2).contiguous().view_as(x)
-        print(score.size())
         exit()
 
 def Tensor(*args):
