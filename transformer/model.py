@@ -27,7 +27,8 @@ CUDA = False
 class transformer(nn.Module):
     def __init__(self, vocab_size):
         super().__init__()
-        self.encoder = encoder(vocab_size)
+        pe = pos_encoder(EMBED_SIZE)
+        self.encoder = encoder(vocab_size, pe)
         self.decoder = None
 
         if CUDA:
@@ -37,18 +38,30 @@ class transformer(nn.Module):
         self.encoder(x, mask)
 
 class encoder(nn.Module):
-    def __init__(self, vocab_size):
+    def __init__(self, vocab_size, pe):
         super().__init__()
 
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
+        self.pe = pe
         self.layers = nn.ModuleList([encoder_layer() for _ in range(NUM_LAYERS)])
 
     def forward(self, x, mask):
         x = self.embed(x)
+        x += self.pe(x.size(1))
         for layer in self.layers:
             x = layer(x, mask)
             print(x.size())
+
+class decoder(nn.Module):
+    def __init__(self, vocab_size, pe):
+        super().__init__()
+
+        # architecture
+        self.pe = pe
+
+    def forward(self, x, mask):
+        return
 
 class encoder_layer(nn.Module):
     def __init__(self):
@@ -59,7 +72,7 @@ class encoder_layer(nn.Module):
         self.ffn = ffn(2048)
         self.dropout = nn.Dropout(DROPOUT)
         self.res = lambda x, z: x + self.dropout(z) # residual connection and dropout
-        self.norm = nn.LayerNorm(EMBED_SIZE)
+        self.norm = nn.LayerNorm(EMBED_SIZE) # layer normalization
 
     def forward(self, x, mask):
         z = self.attn(x, mask)
@@ -67,6 +80,18 @@ class encoder_layer(nn.Module):
         z = self.ffn(z)
         z = self.norm(self.res(x, z))
         return z
+
+class pos_encoder(nn.Module): # positional encoding
+    def __init__(self, d, maxlen = 1000):
+        super().__init__()
+        self.pe = Tensor(maxlen, d)
+        pos = torch.arange(0, maxlen).unsqueeze(1)
+        k = torch.exp(-math.log(10000) * torch.arange(0, d, 2) / d)
+        self.pe[:, 0::2] = torch.sin(pos * k)
+        self.pe[:, 1::2] = torch.cos(pos * k)
+
+    def forward(self, n):
+        return self.pe[:n]
 
 class attn_mh(nn.Module): # multi-head self-attention
     def __init__(self, h, d):
