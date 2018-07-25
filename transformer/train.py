@@ -49,7 +49,7 @@ def train():
     if VERBOSE:
         itow_src = [w for w, _ in sorted(vocab_src.items(), key = lambda x: x[1])]
         itow_tgt = [w for w, _ in sorted(vocab_tgt.items(), key = lambda x: x[1])]
-    model = transformer(len(vocab_src))
+    model = transformer(len(vocab_src), len(vocab_tgt))
     optim = torch.optim.SGD(model.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
     epoch = load_checkpoint(sys.argv[1], model) if isfile(sys.argv[1]) else 0
     filename = re.sub("\.epoch[0-9]+$", "", sys.argv[1])

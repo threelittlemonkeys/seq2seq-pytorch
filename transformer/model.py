@@ -25,17 +25,18 @@ CUDA = torch.cuda.is_available()
 CUDA = False
 
 class transformer(nn.Module):
-    def __init__(self, vocab_size):
+    def __init__(self, src_vocab_size, tgt_vocab_size):
         super().__init__()
-        pe = pos_encoder(EMBED_SIZE)
-        self.encoder = encoder(vocab_size, pe)
-        self.decoder = None
+        pe = pos_encoder() # positional encoding
+        self.encoder = encoder(src_vocab_size, pe)
+        self.decoder = decoder(src_vocab_size, pe)
 
         if CUDA:
             self = self.cuda()
 
     def forward(self, x, mask):
-        self.encoder(x, mask)
+        enc_out = self.encoder(x, mask)
+        self.decoder(enc_out, mask)
 
 class encoder(nn.Module):
     def __init__(self, vocab_size, pe):
@@ -59,9 +60,12 @@ class decoder(nn.Module):
 
         # architecture
         self.pe = pe
+        self.layers = nn.ModuleList([encoder_layer() for _ in range(NUM_LAYERS)])
 
     def forward(self, x, mask):
-        return
+        for layer in self.layers:
+            x = layer(x, mask)
+            print(x.size())
 
 class encoder_layer(nn.Module):
     def __init__(self):
@@ -82,11 +86,11 @@ class encoder_layer(nn.Module):
         return z
 
 class pos_encoder(nn.Module): # positional encoding
-    def __init__(self, d, maxlen = 1000):
+    def __init__(self, maxlen = 1000):
         super().__init__()
-        self.pe = Tensor(maxlen, d)
+        self.pe = Tensor(maxlen, EMBED_SIZE)
         pos = torch.arange(0, maxlen).unsqueeze(1)
-        k = torch.exp(-math.log(10000) * torch.arange(0, d, 2) / d)
+        k = torch.exp(-math.log(10000) * torch.arange(0, EMBED_SIZE, 2) / EMBED_SIZE)
         self.pe[:, 0::2] = torch.sin(pos * k)
         self.pe[:, 1::2] = torch.cos(pos * k)
 
