@@ -34,9 +34,9 @@ class transformer(nn.Module):
         if CUDA:
             self = self.cuda()
 
-    def forward(self, x, mask):
-        enc_out = self.encoder(x, mask)
-        self.decoder(enc_out, mask)
+    def forward(self, x, y, x_mask, y_mask):
+        h = self.encoder(x, x_mask)
+        self.decoder(h, y, x_mask, y_mask)
 
 class encoder(nn.Module):
     def __init__(self, vocab_size, pe):
@@ -52,7 +52,7 @@ class encoder(nn.Module):
         x += self.pe(x.size(1))
         for layer in self.layers:
             x = layer(x, mask)
-            print(x.size())
+        return x
 
 class decoder(nn.Module):
     def __init__(self, vocab_size, pe):
@@ -62,9 +62,9 @@ class decoder(nn.Module):
         self.pe = pe
         self.layers = nn.ModuleList([encoder_layer() for _ in range(NUM_LAYERS)])
 
-    def forward(self, x, mask):
+    def forward(self, x, y, x_mask, y_mask):
         for layer in self.layers:
-            x = layer(x, mask)
+            x = layer(x, x_mask)
             print(x.size())
 
 class encoder_layer(nn.Module):
