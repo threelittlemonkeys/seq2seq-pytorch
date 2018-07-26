@@ -45,7 +45,7 @@ class encoder(nn.Module):
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
         self.pe = pe
-        self.layers = nn.ModuleList([encoder_layer() for _ in range(NUM_LAYERS)])
+        self.layers = nn.ModuleList([enc_layer() for _ in range(NUM_LAYERS)])
 
     def forward(self, x, mask):
         x = self.embed(x)
@@ -60,14 +60,14 @@ class decoder(nn.Module):
 
         # architecture
         self.pe = pe
-        self.layers = nn.ModuleList([encoder_layer() for _ in range(NUM_LAYERS)])
+        self.layers = nn.ModuleList([enc_layer() for _ in range(NUM_LAYERS)])
 
     def forward(self, x, y, x_mask, y_mask):
         for layer in self.layers:
             x = layer(x, x_mask)
             print(x.size())
 
-class encoder_layer(nn.Module):
+class enc_layer(nn.Module): # encoder layer
     def __init__(self):
         super().__init__()
 
