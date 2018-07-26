@@ -24,28 +24,17 @@ torch.manual_seed(1)
 CUDA = torch.cuda.is_available()
 CUDA = False
 
-class transformer(nn.Module):
-    def __init__(self, src_vocab_size, tgt_vocab_size):
-        super().__init__()
-        pe = pos_encoder() # positional encoding
-        self.encoder = encoder(src_vocab_size, pe)
-        self.decoder = decoder(src_vocab_size, pe)
-
-        if CUDA:
-            self = self.cuda()
-
-    def forward(self, x, y, x_mask, y_mask):
-        h = self.encoder(x, x_mask)
-        self.decoder(h, y, x_mask, y_mask)
-
 class encoder(nn.Module):
-    def __init__(self, vocab_size, pe):
+    def __init__(self, vocab_size):
         super().__init__()
 
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
-        self.pe = pe
+        self.pe = pos_encoder() # positional encoding
         self.layers = nn.ModuleList([enc_layer() for _ in range(NUM_LAYERS)])
+
+        if CUDA:
+            self = self.cuda()
 
     def forward(self, x, mask):
         x = self.embed(x)
@@ -55,14 +44,19 @@ class encoder(nn.Module):
         return x
 
 class decoder(nn.Module):
-    def __init__(self, vocab_size, pe):
+    def __init__(self, vocab_size):
         super().__init__()
 
         # architecture
-        self.pe = pe
+        self.pe = pos_encoder() # positional encoding
         self.layers = nn.ModuleList([enc_layer() for _ in range(NUM_LAYERS)])
 
-    def forward(self, x, y, x_mask, y_mask):
+        if CUDA:
+            self = self.cuda()
+
+    def forward(self, memory, y, x_mask, y_mask):
+        print(memory.size())
+        exit()
         for layer in self.layers:
             x = layer(x, x_mask)
             print(x.size())
@@ -104,13 +98,13 @@ class attn_mh(nn.Module): # multi-head self-attention
         self.d = d # dimension of each head
 
         # architecture
-        self.Wq = nn.Linear(EMBED_SIZE, self.h * self.d)
-        self.Wk = nn.Linear(EMBED_SIZE, self.h * self.d)
-        self.Wv = nn.Linear(EMBED_SIZE, self.h * self.d)
+        self.Wq = nn.Linear(EMBED_SIZE, self.h * self.d) # query
+        self.Wk = nn.Linear(EMBED_SIZE, self.h * self.d) # key for attention distribution
+        self.Wv = nn.Linear(EMBED_SIZE, self.h * self.d) # value for context representation
         self.Wo = nn.Linear(self.h * self.d, EMBED_SIZE)
 
     def attn_sdp(self, q, k, v, mask): # scaled dot-product attention
-        a = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(self.d)
+        a = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(self.d) # compatibility function
         mask = mask[0].unsqueeze(1).unsqueeze(3).expand_as(a)
         a = a.masked_fill(1 - mask, -10000) # masking in log space
         a = F.softmax(a, 2)

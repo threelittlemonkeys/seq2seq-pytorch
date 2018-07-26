@@ -49,11 +49,14 @@ def train():
     if VERBOSE:
         src_itow = [w for w, _ in sorted(src_vocab.items(), key = lambda x: x[1])]
         tgt_itow = [w for w, _ in sorted(tgt_vocab.items(), key = lambda x: x[1])]
-    model = transformer(len(src_vocab), len(tgt_vocab))
-    optim = torch.optim.SGD(model.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
-    epoch = load_checkpoint(sys.argv[1], model) if isfile(sys.argv[1]) else 0
+    enc = encoder(len(src_vocab))
+    dec = decoder(len(tgt_vocab))
+    enc_optim = torch.optim.SGD(enc.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
+    dec_optim = torch.optim.SGD(dec.parameters(), lr = LEARNING_RATE, weight_decay = WEIGHT_DECAY)
+    epoch = load_checkpoint(sys.argv[1], enc, dec) if isfile(sys.argv[1]) else 0
     filename = re.sub("\.epoch[0-9]+$", "", sys.argv[1])
-    print(model)
+    print(enc)
+    print(dec)
     print("training model...")
     for ei in range(epoch + 1, epoch + num_epochs + 1):
         loss_sum = 0
@@ -62,8 +65,10 @@ def train():
             loss = 0
             x_mask = maskset(x)
             y_mask = maskset(y)
-            model.zero_grad()
-            model(x, y, x_mask, y_mask)
+            enc.zero_grad()
+            dec.zero_grad()
+            memory = enc(x, x_mask)
+            print(x.size())
             exit()
         timer = time.time() - timer
         loss_sum /= len(data)
