@@ -48,18 +48,22 @@ class decoder(nn.Module):
         super().__init__()
 
         # architecture
+        self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
         self.pe = pos_encoder() # positional encoding
         self.layers = nn.ModuleList([enc_layer() for _ in range(NUM_LAYERS)])
 
         if CUDA:
             self = self.cuda()
 
-    def forward(self, memory, y, x_mask, y_mask):
-        print(memory.size())
+    def forward(self, enc_out, dec_in, mask):
+        x = self.embed(dec_in)
+        x += self.pe(x.size(1))
+        print(x.size())
         exit()
         for layer in self.layers:
-            x = layer(x, x_mask)
-            print(x.size())
+            x = layer(x, mask)
+        exit()
+        return x
 
 class enc_layer(nn.Module): # encoder layer
     def __init__(self):

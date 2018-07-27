@@ -67,8 +67,10 @@ def train():
             y_mask = maskset(y)
             enc.zero_grad()
             dec.zero_grad()
-            memory = enc(x, x_mask)
-            print(x.size())
+            enc_out = enc(x, x_mask)
+            dec_in = LongTensor([SOS_IDX] * BATCH_SIZE).unsqueeze(1)
+            for t in range(y.size(1)):
+                dec_in = dec(enc_out, dec_in, y_mask)
             exit()
         timer = time.time() - timer
         loss_sum /= len(data)

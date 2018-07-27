@@ -84,10 +84,10 @@ class decoder(nn.Module):
             self = self.cuda()
 
     def forward(self, dec_in, enc_out, t, mask):
-        dec_in = self.embed(dec_in)
+        x = self.embed(dec_in)
         if self.feed_input:
-            dec_in = torch.cat((dec_in, self.attn.hidden), 2)
-        h, _ = self.rnn(dec_in, self.hidden)
+            x = torch.cat((x, self.attn.hidden), 2)
+        h, _ = self.rnn(x, self.hidden)
         if self.attn:
             h = self.attn(h, enc_out, t, mask)
         h = self.out(h).squeeze(1)
