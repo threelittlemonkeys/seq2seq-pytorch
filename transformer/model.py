@@ -50,18 +50,16 @@ class decoder(nn.Module):
         # architecture
         self.embed = nn.Embedding(vocab_size, EMBED_SIZE, padding_idx = PAD_IDX)
         self.pe = pos_encoder() # positional encoding
-        self.layers = nn.ModuleList([enc_layer() for _ in range(NUM_LAYERS)])
+        self.layers = nn.ModuleList([dec_layer() for _ in range(NUM_LAYERS)])
 
         if CUDA:
             self = self.cuda()
 
-    def forward(self, enc_out, dec_in, mask):
+    def forward(self, enc_out, dec_in, src_mask, tgt_mask):
         x = self.embed(dec_in)
         x += self.pe(x.size(1))
-        print(x.size())
-        exit()
         for layer in self.layers:
-            x = layer(x, mask)
+            x = layer(enc_out, x, src_mask, tgt_mask)
         exit()
         return x
 
@@ -77,7 +75,26 @@ class enc_layer(nn.Module): # encoder layer
         self.norm = nn.LayerNorm(EMBED_SIZE) # layer normalization
 
     def forward(self, x, mask):
-        z = self.attn(x, mask)
+        z = self.attn(x, x, x, mask)
+        z = self.norm(self.res(x, z))
+        z = self.ffn(z)
+        z = self.norm(self.res(x, z))
+        return z
+
+class dec_layer(nn.Module): # decoder layer
+    def __init__(self):
+        super().__init__()
+
+        # architecture
+        self.attn = attn_mh(8, EMBED_SIZE // 8)
+        self.ffn = ffn(2048)
+        self.dropout = nn.Dropout(DROPOUT)
+        self.res = lambda x, z: x + self.dropout(z) # residual connection and dropout
+        self.norm = nn.LayerNorm(EMBED_SIZE) # layer normalization
+
+    def forward(self, enc_out, dec_in, src_mask, tgt_mask):
+        z = self.attn(dec_in, dec_in, dec_in, src_mask)
+        z = self.attn(z, enc_out, enc_out, src_mask)
         z = self.norm(self.res(x, z))
         z = self.ffn(z)
         z = self.norm(self.res(x, z))
@@ -115,10 +132,10 @@ class attn_mh(nn.Module): # multi-head self-attention
         a = torch.matmul(a, v)
         return a # attention weights
 
-    def forward(self, x, mask):
-        q = self.Wq(x).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
-        k = self.Wk(x).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
-        v = self.Wv(x).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
+    def forward(self, q, k, v, mask):
+        q = self.Wq(q).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
+        k = self.Wk(k).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
+        v = self.Wv(v).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
         z = self.attn_sdp(q, k, v, mask)
         z = z.transpose(1, 2).contiguous().view(BATCH_SIZE, -1, self.h * self.d)
         z = self.Wo(z)
