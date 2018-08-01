@@ -6,6 +6,9 @@ import torch.nn.functional as F
 BATCH_SIZE = 128
 EMBED_SIZE = 512 # representation dimension
 NUM_LAYERS = 6
+NUM_HEADS = 8 # number of heads
+DK = EMBED_SIZE // NUM_HEADS # dimension of keys
+DV = EMBED_SIZE // NUM_HEADS # dimension of values
 DROPOUT = 0.5
 LEARNING_RATE = 0.01
 WEIGHT_DECAY = 1e-4
@@ -39,6 +42,7 @@ class encoder(nn.Module):
     def forward(self, x, mask):
         x = self.embed(x)
         x += self.pe(x.size(1))
+        mask = mask.unsqueeze(1).unsqueeze(3).expand(-1, NUM_HEADS, -1, x.size(1))
         for layer in self.layers:
             x = layer(x, mask)
         return x
@@ -115,29 +119,26 @@ class pos_encoder(nn.Module): # positional encoding
 class attn_mh(nn.Module): # multi-head self-attention
     def __init__(self, h, d):
         super().__init__()
-        self.h = h # number of heads
-        self.d = d # dimension of each head
 
         # architecture
-        self.Wq = nn.Linear(EMBED_SIZE, self.h * self.d) # query
-        self.Wk = nn.Linear(EMBED_SIZE, self.h * self.d) # key for attention distribution
-        self.Wv = nn.Linear(EMBED_SIZE, self.h * self.d) # value for context representation
-        self.Wo = nn.Linear(self.h * self.d, EMBED_SIZE)
+        self.Wq = nn.Linear(EMBED_SIZE, NUM_HEADS * DK) # query
+        self.Wk = nn.Linear(EMBED_SIZE, NUM_HEADS * DK) # keys for attention distribution
+        self.Wv = nn.Linear(EMBED_SIZE, NUM_HEADS * DV) # values for context representation
+        self.Wo = nn.Linear(NUM_HEADS * DV, EMBED_SIZE)
 
     def attn_sdp(self, q, k, v, mask): # scaled dot-product attention
-        a = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(self.d) # compatibility function
-        mask = mask[0].unsqueeze(1).unsqueeze(3).expand_as(a)
-        a = a.masked_fill(1 - mask, -10000) # masking in log space
+        a = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(DK) # compatibility function
+        a = a.masked_fill(mask, -10000) # masking in log space
         a = F.softmax(a, 2)
         a = torch.matmul(a, v)
         return a # attention weights
 
     def forward(self, q, k, v, mask):
-        q = self.Wq(q).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
-        k = self.Wk(k).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
-        v = self.Wv(v).view(BATCH_SIZE, -1, self.h, self.d).transpose(1, 2)
+        q = self.Wq(q).view(BATCH_SIZE, -1, NUM_HEADS, DK).transpose(1, 2)
+        k = self.Wk(k).view(BATCH_SIZE, -1, NUM_HEADS, DK).transpose(1, 2)
+        v = self.Wv(v).view(BATCH_SIZE, -1, NUM_HEADS, DV).transpose(1, 2)
         z = self.attn_sdp(q, k, v, mask)
-        z = z.transpose(1, 2).contiguous().view(BATCH_SIZE, -1, self.h * self.d)
+        z = z.transpose(1, 2).contiguous().view(BATCH_SIZE, -1, NUM_HEADS * DV)
         z = self.Wo(z)
         return z
 
@@ -170,7 +171,3 @@ def zeros(*args):
 
 def scalar(x):
     return x.view(-1).data.tolist()[0]
-
-def maskset(x):
-    mask = x.data.gt(0)
-    return (mask, [sum(seq) for seq in mask]) # set of mask and lengths
