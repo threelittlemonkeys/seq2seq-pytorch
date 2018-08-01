@@ -63,8 +63,8 @@ def train():
         timer = time.time()
         for x, y in data:
             loss = 0
-            src_mask = x.data.gt(0)
-            tgt_mask = y.data.gt(0)
+            src_mask = mask(x)
+            tgt_mask = mask(y)
             enc.zero_grad()
             dec.zero_grad()
             enc_out = enc(x, src_mask)

@@ -4,11 +4,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 BATCH_SIZE = 128
-EMBED_SIZE = 512 # representation dimension
+EMBED_SIZE = 512
 NUM_LAYERS = 6
 NUM_HEADS = 8 # number of heads
-DK = EMBED_SIZE // NUM_HEADS # dimension of keys
-DV = EMBED_SIZE // NUM_HEADS # dimension of values
+DK = EMBED_SIZE // NUM_HEADS # dimension of key
+DV = EMBED_SIZE // NUM_HEADS # dimension of value
 DROPOUT = 0.5
 LEARNING_RATE = 0.01
 WEIGHT_DECAY = 1e-4
@@ -42,7 +42,6 @@ class encoder(nn.Module):
     def forward(self, x, mask):
         x = self.embed(x)
         x += self.pe(x.size(1))
-        mask = mask.unsqueeze(1).unsqueeze(3).expand(-1, NUM_HEADS, -1, x.size(1))
         for layer in self.layers:
             x = layer(x, mask)
         return x
@@ -72,7 +71,7 @@ class enc_layer(nn.Module): # encoder layer
         super().__init__()
 
         # architecture
-        self.attn = attn_mh(8, EMBED_SIZE // 8)
+        self.attn = attn_mh()
         self.ffn = ffn(2048)
         self.dropout = nn.Dropout(DROPOUT)
         self.res = lambda x, z: x + self.dropout(z) # residual connection and dropout
@@ -90,7 +89,7 @@ class dec_layer(nn.Module): # decoder layer
         super().__init__()
 
         # architecture
-        self.attn = attn_mh(8, EMBED_SIZE // 8)
+        self.attn = attn_mh()
         self.ffn = ffn(2048)
         self.dropout = nn.Dropout(DROPOUT)
         self.res = lambda x, z: x + self.dropout(z) # residual connection and dropout
@@ -117,17 +116,18 @@ class pos_encoder(nn.Module): # positional encoding
         return self.pe[:n]
 
 class attn_mh(nn.Module): # multi-head self-attention
-    def __init__(self, h, d):
+    def __init__(self):
         super().__init__()
 
         # architecture
         self.Wq = nn.Linear(EMBED_SIZE, NUM_HEADS * DK) # query
-        self.Wk = nn.Linear(EMBED_SIZE, NUM_HEADS * DK) # keys for attention distribution
-        self.Wv = nn.Linear(EMBED_SIZE, NUM_HEADS * DV) # values for context representation
+        self.Wk = nn.Linear(EMBED_SIZE, NUM_HEADS * DK) # key for attention distribution
+        self.Wv = nn.Linear(EMBED_SIZE, NUM_HEADS * DV) # value for context representation
         self.Wo = nn.Linear(NUM_HEADS * DV, EMBED_SIZE)
 
     def attn_sdp(self, q, k, v, mask): # scaled dot-product attention
-        a = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(DK) # compatibility function
+        c = math.sqrt(DK) # scale factor
+        a = torch.matmul(q, k.transpose(2, 3)) / c # compatibility function
         a = a.masked_fill(mask, -10000) # masking in log space
         a = F.softmax(a, 2)
         a = torch.matmul(a, v)
@@ -171,3 +171,8 @@ def zeros(*args):
 
 def scalar(x):
     return x.view(-1).data.tolist()[0]
+
+def mask(x, n = 0):
+    n = n if n else x.size(1) # length of query
+    x = x.data.ne(PAD_IDX).unsqueeze(1).unsqueeze(2).expand(-1, NUM_HEADS, n, -1)
+    return x
