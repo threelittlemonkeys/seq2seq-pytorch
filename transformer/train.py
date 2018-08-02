@@ -71,7 +71,12 @@ def train():
             tgt_mask_attn2 = mask_pad(x, 1)
             for t in range(y.size(1)):
                 tgt_mask_attn1 = mask_triu(mask_pad(dec_in))
-                dec_in = dec(enc_out, dec_in, tgt_mask_attn1, tgt_mask_attn2)
+                dec_out = dec(enc_out, dec_in, tgt_mask_attn1, tgt_mask_attn2)
+                loss += F.nll_loss(dec_out, y[:, t], size_average = False, ignore_index = PAD_IDX)
+                print(dec_in.size())
+                print(y[:, t])
+                print(y[:, t].size())
+                exit()
                 tgt_mask_attn2 = tgt_mask_attn2.expand(-1, -1, dec_in.size(1), -1)
             exit()
         timer = time.time() - timer
