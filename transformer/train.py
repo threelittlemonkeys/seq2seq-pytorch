@@ -63,14 +63,16 @@ def train():
         timer = time.time()
         for x, y in data:
             loss = 0
-            src_mask = mask(x)
-            tgt_mask = mask(y)
             enc.zero_grad()
             dec.zero_grad()
+            src_mask = mask_pad(x)
             enc_out = enc(x, src_mask)
             dec_in = LongTensor([SOS_IDX] * BATCH_SIZE).unsqueeze(1)
+            tgt_mask_attn2 = mask_pad(x, 1)
             for t in range(y.size(1)):
-                dec_in = dec(enc_out, dec_in, src_mask, tgt_mask)
+                tgt_mask_attn1 = mask_triu(mask_pad(dec_in))
+                dec_in = dec(enc_out, dec_in, tgt_mask_attn1, tgt_mask_attn2)
+                tgt_mask_attn2 = tgt_mask_attn2.expand(-1, -1, dec_in.size(1), -1)
             exit()
         timer = time.time() - timer
         loss_sum /= len(data)

@@ -1,4 +1,4 @@
-import math
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -58,11 +58,13 @@ class decoder(nn.Module):
         if CUDA:
             self = self.cuda()
 
-    def forward(self, enc_out, dec_in, src_mask, tgt_mask):
+    def forward(self, enc_out, dec_in, mask_attn1, mask_attn2):
         x = self.embed(dec_in)
         x += self.pe(x.size(1))
         for layer in self.layers:
-            x = layer(enc_out, x, src_mask, tgt_mask)
+            x = layer(enc_out, x, mask_attn1, mask_attn2)
+        print(x)
+        print(x.size())
         exit()
         return x
 
@@ -71,51 +73,53 @@ class enc_layer(nn.Module): # encoder layer
         super().__init__()
 
         # architecture
-        self.attn = attn_mh()
+        self.attn = attn_mh() # self-attention
         self.ffn = ffn(2048)
         self.dropout = nn.Dropout(DROPOUT)
         self.res = lambda x, z: x + self.dropout(z) # residual connection and dropout
         self.norm = nn.LayerNorm(EMBED_SIZE) # layer normalization
 
     def forward(self, x, mask):
-        z = self.attn(x, x, x, mask)
-        z = self.norm(self.res(x, z))
-        z = self.ffn(z)
-        z = self.norm(self.res(x, z))
-        return z
+        z1 = self.attn(x, x, x, mask)
+        z1 = self.norm(self.res(x, z1))
+        z2 = self.ffn(z1)
+        z2 = self.norm(self.res(z1, z2))
+        return z2
 
 class dec_layer(nn.Module): # decoder layer
     def __init__(self):
         super().__init__()
 
         # architecture
-        self.attn = attn_mh()
+        self.attn1 = attn_mh() # masked self-attention
+        self.attn2 = attn_mh() # encoder-decoder attention
         self.ffn = ffn(2048)
         self.dropout = nn.Dropout(DROPOUT)
         self.res = lambda x, z: x + self.dropout(z) # residual connection and dropout
         self.norm = nn.LayerNorm(EMBED_SIZE) # layer normalization
 
-    def forward(self, enc_out, dec_in, src_mask, tgt_mask):
-        z = self.attn(dec_in, dec_in, dec_in, src_mask)
-        z = self.attn(z, enc_out, enc_out, src_mask)
-        z = self.norm(self.res(x, z))
-        z = self.ffn(z)
-        z = self.norm(self.res(x, z))
-        return z
+    def forward(self, enc_out, dec_in, mask_attn1, mask_attn2):
+        z1 = self.attn1(dec_in, dec_in, dec_in, mask_attn1)
+        z1 = self.norm(self.res(dec_in, z1))
+        z2 = self.attn2(z1, enc_out, enc_out, mask_attn2)
+        z2 = self.norm(self.res(z1, z2))
+        z3 = self.ffn(z2)
+        z3 = self.norm(self.res(z2, z3))
+        return z3
 
 class pos_encoder(nn.Module): # positional encoding
     def __init__(self, maxlen = 1000):
         super().__init__()
         self.pe = Tensor(maxlen, EMBED_SIZE)
         pos = torch.arange(0, maxlen).unsqueeze(1)
-        k = torch.exp(-math.log(10000) * torch.arange(0, EMBED_SIZE, 2) / EMBED_SIZE)
+        k = torch.exp(-np.log(10000) * torch.arange(0, EMBED_SIZE, 2) / EMBED_SIZE)
         self.pe[:, 0::2] = torch.sin(pos * k)
         self.pe[:, 1::2] = torch.cos(pos * k)
 
     def forward(self, n):
         return self.pe[:n]
 
-class attn_mh(nn.Module): # multi-head self-attention
+class attn_mh(nn.Module): # multi-head attention
     def __init__(self):
         super().__init__()
 
@@ -126,10 +130,10 @@ class attn_mh(nn.Module): # multi-head self-attention
         self.Wo = nn.Linear(NUM_HEADS * DV, EMBED_SIZE)
 
     def attn_sdp(self, q, k, v, mask): # scaled dot-product attention
-        c = math.sqrt(DK) # scale factor
+        c = np.sqrt(DK) # scale factor
         a = torch.matmul(q, k.transpose(2, 3)) / c # compatibility function
         a = a.masked_fill(mask, -10000) # masking in log space
-        a = F.softmax(a, 2)
+        a = F.softmax(a, -1)
         a = torch.matmul(a, v)
         return a # attention weights
 
@@ -172,7 +176,11 @@ def zeros(*args):
 def scalar(x):
     return x.view(-1).data.tolist()[0]
 
-def mask(x, n = 0):
-    n = n if n else x.size(1) # length of query
-    x = x.data.ne(PAD_IDX).unsqueeze(1).unsqueeze(2).expand(-1, NUM_HEADS, n, -1)
+def mask_pad(x, n = 0): # mask out padded positions
+    z = [-1, NUM_HEADS, n if n else x.size(1), -1]
+    x = x.data.eq(PAD_IDX).unsqueeze(1).unsqueeze(2).expand(z)
     return x
+
+def mask_triu(x): # mask out subsequent positions
+    y = Tensor(np.triu(np.ones([x.size(2), x.size(2)]), 1)).byte()
+    return torch.gt(x + y, 0)
