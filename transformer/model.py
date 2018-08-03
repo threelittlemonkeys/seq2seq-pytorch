@@ -44,7 +44,6 @@ class encoder(nn.Module):
         h = x + self.pe(x.size(1))
         for layer in self.layers:
             h = layer(h, mask)
-        print("enc\t", h.size(), "\n")
         return h
 
 class decoder(nn.Module):
@@ -61,10 +60,10 @@ class decoder(nn.Module):
         if CUDA:
             self = self.cuda()
 
-    def forward(self, enc_out, dec_in, mask_attn1, mask_attn2):
+    def forward(self, enc_out, dec_in, mask_attn2):
         x = self.embed(dec_in)
         h = x + self.pe(x.size(1))
-        print("dec\t", h.size())
+        mask_attn1 = mask_triu(mask_pad(dec_in))
         for layer in self.layers:
             h = layer(enc_out, h, mask_attn1, mask_attn2)
         h = self.out(h).squeeze(1)
@@ -171,10 +170,8 @@ def LongTensor(*args):
 def scalar(x):
     return x.view(-1).data.tolist()[0]
 
-def mask_pad(x, n = 0): # mask out padded positions
-    z = [-1, NUM_HEADS, n if n else x.size(1), -1]
-    x = x.data.eq(PAD_IDX).unsqueeze(1).unsqueeze(2).expand(z)
-    return x
+def mask_pad(x): # mask out padded positions
+    return x.data.eq(PAD_IDX).view(BATCH_SIZE, 1, 1, -1)
 
 def mask_triu(x): # mask out subsequent positions
     y = Tensor(np.triu(np.ones([x.size(2), x.size(2)]), 1)).byte()

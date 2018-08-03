@@ -148,7 +148,7 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
             a = ht.bmm(self.Wa(hs).transpose(1, 2))
         elif self.method == "concat":
             pass # TODO
-        a = a.masked_fill(1 - mask.unsqueeze(1), -10000) # masking in log space
+        a = a.masked_fill(mask.unsqueeze(1), -10000) # masking in log space
         a = F.softmax(a, 2)
         if self.type == "local-p":
             a = a * k
@@ -185,5 +185,5 @@ def scalar(x):
     return x.view(-1).data.tolist()[0]
 
 def maskset(x):
-    mask = x.data.gt(0)
-    return (mask, [sum(seq) for seq in mask]) # set of mask and lengths
+    mask = x.data.eq(PAD_IDX)
+    return (mask, x.size(1) - mask.sum(1)) # set of mask and lengths
