@@ -41,10 +41,11 @@ class encoder(nn.Module):
 
     def forward(self, x, mask):
         x = self.embed(x)
-        x += self.pe(x.size(1))
+        h = x + self.pe(x.size(1))
         for layer in self.layers:
-            x = layer(x, mask)
-        return x
+            h = layer(h, mask)
+        print("enc\t", h.size(), "\n")
+        return h
 
 class decoder(nn.Module):
     def __init__(self, vocab_size):
@@ -63,6 +64,7 @@ class decoder(nn.Module):
     def forward(self, enc_out, dec_in, mask_attn1, mask_attn2):
         x = self.embed(dec_in)
         h = x + self.pe(x.size(1))
+        print("dec\t", h.size())
         for layer in self.layers:
             h = layer(enc_out, h, mask_attn1, mask_attn2)
         h = self.out(h).squeeze(1)
@@ -164,10 +166,6 @@ def Tensor(*args):
 
 def LongTensor(*args):
     x = torch.LongTensor(*args)
-    return x.cuda() if CUDA else x
-
-def zeros(*args):
-    x = torch.zeros(*args)
     return x.cuda() if CUDA else x
 
 def scalar(x):
