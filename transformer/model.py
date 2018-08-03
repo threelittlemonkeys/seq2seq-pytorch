@@ -76,16 +76,11 @@ class enc_layer(nn.Module): # encoder layer
         # architecture
         self.attn = attn_mh() # self-attention
         self.ffn = ffn(2048)
-        self.dropout = nn.Dropout(DROPOUT)
-        self.res = lambda x, z: x + self.dropout(z) # residual connection and dropout
-        self.norm = nn.LayerNorm(EMBED_SIZE) # layer normalization
 
     def forward(self, x, mask):
-        z1 = self.attn(x, x, x, mask)
-        z1 = self.norm(self.res(x, z1))
-        z2 = self.ffn(z1)
-        z2 = self.norm(self.res(z1, z2))
-        return z2
+        z = self.attn(x, x, x, mask)
+        z = self.ffn(z)
+        return z
 
 class dec_layer(nn.Module): # decoder layer
     def __init__(self):
@@ -95,18 +90,12 @@ class dec_layer(nn.Module): # decoder layer
         self.attn1 = attn_mh() # masked self-attention
         self.attn2 = attn_mh() # encoder-decoder attention
         self.ffn = ffn(2048)
-        self.dropout = nn.Dropout(DROPOUT)
-        self.res = lambda x, z: x + self.dropout(z) # residual connection and dropout
-        self.norm = nn.LayerNorm(EMBED_SIZE) # layer normalization
 
     def forward(self, enc_out, dec_in, mask_attn1, mask_attn2):
-        z1 = self.attn1(dec_in, dec_in, dec_in, mask_attn1)
-        z1 = self.norm(self.res(dec_in, z1))
-        z2 = self.attn2(z1, enc_out, enc_out, mask_attn2)
-        z2 = self.norm(self.res(z1, z2))
-        z3 = self.ffn(z2)
-        z3 = self.norm(self.res(z2, z3))
-        return z3
+        z = self.attn1(dec_in, dec_in, dec_in, mask_attn1)
+        z = self.attn2(z, enc_out, enc_out, mask_attn2)
+        z = self.ffn(z)
+        return z
 
 class pos_encoder(nn.Module): # positional encoding
     def __init__(self, maxlen = 1000):
@@ -129,6 +118,8 @@ class attn_mh(nn.Module): # multi-head attention
         self.Wk = nn.Linear(EMBED_SIZE, NUM_HEADS * DK) # key for attention distribution
         self.Wv = nn.Linear(EMBED_SIZE, NUM_HEADS * DV) # value for context representation
         self.Wo = nn.Linear(NUM_HEADS * DV, EMBED_SIZE)
+        self.dropout = nn.Dropout(DROPOUT)
+        self.norm = nn.LayerNorm(EMBED_SIZE)
 
     def attn_sdp(self, q, k, v, mask): # scaled dot-product attention
         c = np.sqrt(DK) # scale factor
@@ -139,12 +130,14 @@ class attn_mh(nn.Module): # multi-head attention
         return a # attention weights
 
     def forward(self, q, k, v, mask):
+        x = q # identity
         q = self.Wq(q).view(BATCH_SIZE, -1, NUM_HEADS, DK).transpose(1, 2)
         k = self.Wk(k).view(BATCH_SIZE, -1, NUM_HEADS, DK).transpose(1, 2)
         v = self.Wv(v).view(BATCH_SIZE, -1, NUM_HEADS, DV).transpose(1, 2)
         z = self.attn_sdp(q, k, v, mask)
         z = z.transpose(1, 2).contiguous().view(BATCH_SIZE, -1, NUM_HEADS * DV)
         z = self.Wo(z)
+        z = self.norm(x + self.dropout(z)) # residual connection and dropout
         return z
 
 class ffn(nn.Module): # position-wise feed-forward networks
@@ -156,11 +149,14 @@ class ffn(nn.Module): # position-wise feed-forward networks
             nn.Linear(EMBED_SIZE, d),
             nn.ReLU(),
             nn.Linear(d, EMBED_SIZE),
-            nn.Dropout(DROPOUT)
         )
+        self.dropout = nn.Dropout(DROPOUT)
+        self.norm = nn.LayerNorm(EMBED_SIZE)
 
     def forward(self, x):
-        return self.layers(x)
+        z = self.layers(x)
+        z = self.norm(x + self.dropout(z)) # residual connection and dropout
+        return z
 
 def Tensor(*args):
     x = torch.Tensor(*args)
