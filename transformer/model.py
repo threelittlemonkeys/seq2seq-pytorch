@@ -60,13 +60,13 @@ class decoder(nn.Module):
         if CUDA:
             self = self.cuda()
 
-    def forward(self, enc_out, dec_in, mask_attn2):
+    def forward(self, enc_out, dec_in, mask2):
         x = self.embed(dec_in)
         h = x + self.pe(x.size(1))
-        mask_attn1 = mask_triu(mask_pad(dec_in))
+        mask1 = mask_triu(mask_pad(dec_in))
         for layer in self.layers:
-            h = layer(enc_out, h, mask_attn1, mask_attn2)
-        h = self.out(h).squeeze(1)
+            h = layer(enc_out, h, mask1, mask2)
+        h = self.out(h[:, -1])
         y = self.softmax(h)
         return y
 
@@ -92,9 +92,9 @@ class dec_layer(nn.Module): # decoder layer
         self.attn2 = attn_mh() # encoder-decoder attention
         self.ffn = ffn(2048)
 
-    def forward(self, enc_out, dec_in, mask_attn1, mask_attn2):
-        z = self.attn1(dec_in, dec_in, dec_in, mask_attn1)
-        z = self.attn2(z, enc_out, enc_out, mask_attn2)
+    def forward(self, enc_out, dec_in, mask1, mask2):
+        z = self.attn1(dec_in, dec_in, dec_in, mask1)
+        z = self.attn2(z, enc_out, enc_out, mask2)
         z = self.ffn(z)
         return z
 

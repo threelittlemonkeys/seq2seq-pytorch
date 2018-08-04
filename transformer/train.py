@@ -66,15 +66,22 @@ def train():
             enc.zero_grad()
             dec.zero_grad()
             mask = mask_pad(x)
+            if VERBOSE:
+                pred = [[] for _ in range(BATCH_SIZE)]
             enc_out = enc(x, mask)
-            print("enc_out\t", enc_out.size())
             dec_in = LongTensor([SOS_IDX] * BATCH_SIZE).unsqueeze(1)
             for t in range(y.size(1)):
                 dec_out = dec(enc_out, dec_in, mask)
-                print("dec_out\t", dec_out.size())
-                loss += F.nll_loss(dec_out, y[:, t], size_average = False, ignore_index = PAD_IDX)
-                dec_in = torch.cat((dec_in, y[:, t].unsqueeze(1)), 1)
-            exit()
+                loss += F.nll_loss(dec_out, y[:, t], ignore_index = PAD_IDX)
+                dec_in = torch.cat((dec_in, y[:, t].unsqueeze(1)), 1) # teacher forcing
+                if VERBOSE:
+                    for i, j in enumerate(dec_out.data.topk(1)[1]):
+                        pred[i].append(scalar(j))
+            loss.backward()
+            enc_optim.step()
+            dec_optim.step()
+            loss = scalar(loss)
+            loss_sum += loss
         timer = time.time() - timer
         loss_sum /= len(data)
         if ei % SAVE_EVERY and ei != epoch + num_epochs:

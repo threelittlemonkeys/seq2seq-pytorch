@@ -18,10 +18,14 @@ Kyunghyun Cho, Bart van Merrienboer, Caglar Gulcehre, Dzmitry Bahdanau, Fethi Bo
 
 Jonas Gehring, Michael Auli, David Grangier, Denis Yarats, Yann N. Dauphin. 2017. [Convolutional Sequence to Sequence Learning.](https://arxiv.org/abs/1705.03122) arXiv:1705.03122.
 
+Alex Graves. 2013. [Generating Sequences With Recurrent Neural Networks.](https://arxiv.org/abs/1308.0850) arXiv:1308.0850.
+
 Jiatao Gu, Zhengdong Lu, Hang Li, Victor O.K. Li. 2016. [Incorporating Copying Mechanism in Sequence-to-Sequence Learning.](https://arxiv.org/abs/1603.06393) arXiv:1603.06393.
 
 Minh-Thang Luong, Hieu Pham, Christopher D. Manning. 2015. [Effective Approaches to Attention-based Neural Machine Translation.](https://arxiv.org/abs/1508.04025) arXiv:1507.04025.
 
 Hideya Mino, Masao Utiyama, Eiichiro Sumita, Takenobu Tokunaga. 2017. [Key-value Attention Mechanism for Neural Machine Translation.](http://aclweb.org/anthology/I17-2049) In Proceedings of the 8th International Joint Conference on Natural Language Processing, pp. 290-295.
+
+Ofir Press, Lior Wolf. 2016. [Using the Output Embedding to Improve Language Models.](https://arxiv.org/abs/1608.05859) arXiv:1608.05859.
 
 Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin. 2017. [Attention Is All You Need.](https://arxiv.org/abs/1706.03762) arXiv:1706.03762.
