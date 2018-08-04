@@ -16,11 +16,15 @@ James Bradbury, Stephen Merity, Caiming Xiong, Richard Socher. 2016. [Quasi-Recu
 
 Kyunghyun Cho, Bart van Merrienboer, Caglar Gulcehre, Dzmitry Bahdanau, Fethi Bougares, Holger Schwenk, Yoshua Bengio. 2014. [Learning Phrase Representations using RNN Encoder-Decoder for Statistical Machine Translation.](https://arxiv.org/abs/1406.1078) arXiv:1406.1078.
 
+Andrew M. Dai, Quoc V. Le. [Semi-supervised Sequence Learning.](https://arxiv.org/abs/1511.01432) arXiv:1511.01432.
+
 Jonas Gehring, Michael Auli, David Grangier, Denis Yarats, Yann N. Dauphin. 2017. [Convolutional Sequence to Sequence Learning.](https://arxiv.org/abs/1705.03122) arXiv:1705.03122.
 
 Alex Graves. 2013. [Generating Sequences With Recurrent Neural Networks.](https://arxiv.org/abs/1308.0850) arXiv:1308.0850.
 
 Jiatao Gu, Zhengdong Lu, Hang Li, Victor O.K. Li. 2016. [Incorporating Copying Mechanism in Sequence-to-Sequence Learning.](https://arxiv.org/abs/1603.06393) arXiv:1603.06393.
+
+Łukasz Kaiser, Samy Bengio. 2018. [Discrete Autoencoders for Sequence Models.](https://arxiv.org/abs/1801.09797) arXiv:1801.09797.
 
 Minh-Thang Luong, Hieu Pham, Christopher D. Manning. 2015. [Effective Approaches to Attention-based Neural Machine Translation.](https://arxiv.org/abs/1508.04025) arXiv:1507.04025.
 
