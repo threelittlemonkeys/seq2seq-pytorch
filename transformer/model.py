@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-BATCH_SIZE = 128
+BATCH_SIZE = 32
 EMBED_SIZE = 512
 NUM_LAYERS = 6
 NUM_HEADS = 8 # number of heads
@@ -12,7 +12,7 @@ DV = EMBED_SIZE // NUM_HEADS # dimension of value
 DROPOUT = 0.5
 LEARNING_RATE = 0.01
 WEIGHT_DECAY = 1e-4
-VERBOSE = False
+VERBOSE = True
 SAVE_EVERY = 10
 
 PAD = "<PAD>" # padding
@@ -25,7 +25,6 @@ SOS_IDX = 2
 
 torch.manual_seed(1)
 CUDA = torch.cuda.is_available()
-CUDA = False
 
 class encoder(nn.Module):
     def __init__(self, vocab_size):
