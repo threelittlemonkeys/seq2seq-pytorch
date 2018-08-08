@@ -10,8 +10,6 @@ NUM_HEADS = 8 # number of heads
 DK = EMBED_SIZE // NUM_HEADS # dimension of key
 DV = EMBED_SIZE // NUM_HEADS # dimension of value
 DROPOUT = 0.5
-LEARNING_RATE = 0.01
-WEIGHT_DECAY = 1e-4
 VERBOSE = True
 SAVE_EVERY = 10
 
