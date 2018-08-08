@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-BATCH_SIZE = 32
-EMBED_SIZE = 512
+BATCH_SIZE = 16
+EMBED_SIZE = 128
 NUM_LAYERS = 6
 NUM_HEADS = 8 # number of heads
 DK = EMBED_SIZE // NUM_HEADS # dimension of key
