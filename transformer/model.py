@@ -10,7 +10,7 @@ NUM_HEADS = 8 # number of heads
 DK = EMBED_SIZE // NUM_HEADS # dimension of key
 DV = EMBED_SIZE // NUM_HEADS # dimension of value
 DROPOUT = 0.5
-VERBOSE = True
+VERBOSE = False
 SAVE_EVERY = 10
 
 PAD = "<PAD>" # padding
