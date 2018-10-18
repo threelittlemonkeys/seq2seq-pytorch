@@ -99,8 +99,8 @@ class pos_encoder(nn.Module): # positional encoding
     def __init__(self, maxlen = 1000):
         super().__init__()
         self.pe = Tensor(maxlen, EMBED_SIZE)
-        pos = torch.arange(0, maxlen).unsqueeze(1)
-        k = torch.exp(-np.log(10000) * torch.arange(0, EMBED_SIZE, 2) / EMBED_SIZE)
+        pos = torch.arange(0, maxlen, 1.).unsqueeze(1)
+        k = torch.exp(np.log(10000) * -torch.arange(0, EMBED_SIZE, 2.) / EMBED_SIZE)
         self.pe[:, 0::2] = torch.sin(pos * k)
         self.pe[:, 1::2] = torch.cos(pos * k)
 
