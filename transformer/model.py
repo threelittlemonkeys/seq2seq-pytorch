@@ -63,7 +63,7 @@ class decoder(nn.Module):
         mask1 = mask_triu(mask_pad(dec_in))
         for layer in self.layers:
             h = layer(enc_out, h, mask1, mask2)
-        h = self.out(h[:, 3])
+        h = self.out(h[:, -1])
         y = self.softmax(h)
         return y
 
@@ -123,7 +123,7 @@ class attn_mh(nn.Module): # multi-head attention
         c = np.sqrt(DK) # scale factor
         a = torch.matmul(q, k.transpose(2, 3)) / c # compatibility function
         a = a.masked_fill(mask, -10000) # masking in log space
-        a = F.softmax(a, -1)
+        a = F.softmax(a, 3)
         a = torch.matmul(a, v)
         return a # attention weights
 
