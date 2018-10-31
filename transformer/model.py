@@ -63,7 +63,7 @@ class decoder(nn.Module):
         mask1 = mask_triu(mask_pad(dec_in))
         for layer in self.layers:
             h = layer(enc_out, h, mask1, mask2)
-        h = self.out(h[:, -1])
+        h = self.out(h[:, 3])
         y = self.softmax(h)
         return y
 
