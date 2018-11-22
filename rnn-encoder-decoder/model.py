@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 EMBED_SIZE = 300
 HIDDEN_SIZE = 1000
 NUM_LAYERS = 2
@@ -13,15 +13,17 @@ LEARNING_RATE = 0.01
 WEIGHT_DECAY = 1e-4
 TEACHER_FORCING = 0.5
 VERBOSE = False
-SAVE_EVERY = 10
+SAVE_EVERY = 1
 
 PAD = "<PAD>" # padding
 EOS = "<EOS>" # end of sequence
 SOS = "<SOS>" # start of sequence
+UNK = "<UNK>" # unknown token
 
 PAD_IDX = 0
-EOS_IDX = 1
-SOS_IDX = 2
+SOS_IDX = 1
+EOS_IDX = 2
+UNK_IDX = 3
 
 torch.manual_seed(1)
 CUDA = torch.cuda.is_available()
