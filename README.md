@@ -1,6 +1,6 @@
 # Sequence to Sequence Models in PyTorch
 
-PyTorch implementations of sequence to sequence models.
+Minimal implementations of sequence to sequence models in PyTorch.
 
 - RNN Encoder-Decoder (Cho et al 2014; Luong et al 2015; Gu et al 2016)
 - CNNs from "Convolutional Sequence to Sequence Learning" (Gehring et al 2017)
@@ -13,6 +13,8 @@ Jimmy Lei Ba, Jamie Ryan Kiros, Geoffrey E. Hinton. 2016. [Layer Normalization.]
 Dzmitry Bahdanau, Kyunghyun Cho, Yoshua Bengio. 2015. [Neural Machine Translation by Jointly Learning to Align and Translate.](https://arxiv.org/abs/1409.0473) arXiv:1409.0473.
 
 James Bradbury, Stephen Merity, Caiming Xiong, Richard Socher. 2016. [Quasi-Recurrent Neural Networks.](https://arxiv.org/abs/1611.01576) arXiv:1611.01576.
+
+Denny Britz, Anna Goldie, Minh-Thang Luong, Quoc Le. 2017. [Massive Exploration of Neural Machine Translation Architectures.](https://arxiv.org/abs/1703.03906) arXiv:1703.03906.
 
 Kyunghyun Cho, Bart van Merrienboer, Caglar Gulcehre, Dzmitry Bahdanau, Fethi Bougares, Holger Schwenk, Yoshua Bengio. 2014. [Learning Phrase Representations using RNN Encoder-Decoder for Statistical Machine Translation.](https://arxiv.org/abs/1406.1078) arXiv:1406.1078.
 
