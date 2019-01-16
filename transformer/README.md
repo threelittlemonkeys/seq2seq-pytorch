@@ -1,6 +1,6 @@
 # The Transformer in PyTorch
 
-A PyTorch implementation of the Transformer for sequence to sequence learning.
+A minimal PyTorch implementation of the Transformer for sequence to sequence learning.
 
 Supported features:
 - Mini-batch training with CUDA

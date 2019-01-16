@@ -3,6 +3,7 @@ from model import *
 
 def normalize(x):
     # x = re.sub("[^ ,.?!a-zA-Z0-9\u3131-\u318E\uAC00-\uD7A3]+", " ", x)
+    x = re.sub("(?=[,.?!])", " ", x)
     x = re.sub("\s+", " ", x)
     x = re.sub("^ | $", "", x)
     x = x.lower()
@@ -50,13 +51,12 @@ def save_checkpoint(filename, enc, dec, epoch, loss, time):
         torch.save(checkpoint, filename + ".epoch%d" % epoch)
         print("saved model at epoch %d" % epoch)
 
-def mat2csv(m, delim ="\t", n = 6):
-    k = 10 ** -n
-    csv = delim.join([x for x in m[0]]) + "\n"
-    for v in m[1:]:
-        csv += v[0] + delim
-        if n:
-            csv += delim.join([str(round(x, n)) if x > k else "" for x in v[1:]]) + "\n"
-        else:
-            csv += delim.join([str(x) for x in v[1:]]) + "\n"
+def mat2csv(m, ch = True, rh = False, nd = 4, delim ="\t"):
+    f = "%%.%df" % nd
+    if ch: # column header
+        csv = delim.join([x for x in m[0]]) + "\n" # source sequence
+    for row in m[ch:]:
+        if rh: # row header
+            csv += row[0] + delim # target sequence
+        csv += delim.join([f % x for x in row[rh:]]) + "\n"
     return csv
