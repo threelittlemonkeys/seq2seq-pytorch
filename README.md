@@ -26,6 +26,8 @@ Alex Graves. 2013. [Generating Sequences With Recurrent Neural Networks.](https:
 
 Jiatao Gu, Zhengdong Lu, Hang Li, Victor O.K. Li. 2016. [Incorporating Copying Mechanism in Sequence-to-Sequence Learning.](https://arxiv.org/abs/1603.06393) arXiv:1603.06393.
 
+Jeremy Hylton. 1993. [The Complete Works of William Shakespeare.](http://shakespeare.mit.edu) http://shakespeare.mit.edu.
+
 Łukasz Kaiser, Samy Bengio. 2018. [Discrete Autoencoders for Sequence Models.](https://arxiv.org/abs/1801.09797) arXiv:1801.09797.
 
 Jiwei Li. 2017. [Teaching Machines to Converse.](https://github.com/jiweil/Jiwei-Thesis/blob/master/thesis.pdf) Doctoral dissertation.
