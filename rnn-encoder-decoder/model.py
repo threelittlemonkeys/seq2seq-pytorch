@@ -12,10 +12,9 @@ NUM_LAYERS = 2
 DROPOUT = 0.5
 BIDIRECTIONAL = True
 NUM_DIRS = 2 if BIDIRECTIONAL else 1
-LEARNING_RATE = 0.01
-WEIGHT_DECAY = 1e-4
+LEARNING_RATE = 1e-4
 BEAM_SIZE = 3
-VERBOSE = False
+VERBOSE = 0 # 0: None, 1: attention heatmap, 2: beam search
 SAVE_EVERY = 10
 
 PAD = "<PAD>" # padding
