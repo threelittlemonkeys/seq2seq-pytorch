@@ -20,6 +20,8 @@ Kyunghyun Cho, Bart van Merrienboer, Caglar Gulcehre, Dzmitry Bahdanau, Fethi Bo
 
 Andrew M. Dai, Quoc V. Le. [Semi-supervised Sequence Learning.](https://arxiv.org/abs/1511.01432) arXiv:1511.01432.
 
+Zihang Dai, Zhilin Yang, Yiming Yang, Jaime Carbonell, Quoc V. Le, Ruslan Salakhutdinov. 2019. [Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context.](https://arxiv.org/abs/1901.02860) In ACL.
+
 Jonas Gehring, Michael Auli, David Grangier, Denis Yarats, Yann N. Dauphin. 2017. [Convolutional Sequence to Sequence Learning.](https://arxiv.org/abs/1705.03122) arXiv:1705.03122.
 
 Alex Graves. 2013. [Generating Sequences With Recurrent Neural Networks.](https://arxiv.org/abs/1308.0850) arXiv:1308.0850.
@@ -40,7 +42,7 @@ Hideya Mino, Masao Utiyama, Eiichiro Sumita, Takenobu Tokunaga. 2017. [Key-value
 
 Ofir Press, Lior Wolf. 2016. [Using the Output Embedding to Improve Language Models.](https://arxiv.org/abs/1608.05859) arXiv:1608.05859.
 
-Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin. 2017. [Attention Is All You Need.](https://arxiv.org/abs/1706.03762) arXiv:1706.03762.
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin. 2017. [Attention Is All You Need.](https://arxiv.org/abs/1706.03762) In NIPS.
 
 Sam Wiseman, Alexander M. Rush. [Sequence-to-Sequence Learning as Beam-Search Optimization.](https://arxiv.org/abs/1606.02960) arXiv:1606.02960.
 
