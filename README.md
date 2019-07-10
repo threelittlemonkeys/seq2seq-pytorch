@@ -45,6 +45,8 @@ Hideya Mino, Masao Utiyama, Eiichiro Sumita, Takenobu Tokunaga. 2017. [Key-value
 
 Ofir Press, Lior Wolf. 2016. [Using the Output Embedding to Improve Language Models.](https://arxiv.org/abs/1608.05859) arXiv:1608.05859.
 
+Abigail See, Peter J. Liu, Christopher D. Manning. 2017. [Get To The Point: Summarization with Pointer-Generator Networks.](https://arxiv.org/abs/1704.04368) arXiv:1704.04368.
+
 Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin. 2017. [Attention Is All You Need.](https://arxiv.org/abs/1706.03762) In NIPS.
 
 Oriol Vinyals, Meire Fortunato, Navdeep Jaitly. 2015. [Pointer Networks.](https://arxiv.org/abs/1506.03134) In NIPS.
