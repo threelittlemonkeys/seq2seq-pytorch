@@ -1,8 +1,9 @@
-# Sequence to Sequence Models in PyTorch
+# Sequence to Sequence Models
 
 Minimal implementations of sequence to sequence models in PyTorch.
 
 - RNN Encoder-Decoder (Cho et al 2014; Luong et al 2015; Gu et al 2016)
+- Pointer Networks (Vinyals et al 2015)
 - CNNs from "Convolutional Sequence to Sequence Learning" (Gehring et al 2017)
 - The Transformer from "Attention Is All You Need" (Vaswani et all 2017)
 
@@ -38,13 +39,15 @@ Jiwei Li. 2017. [Teaching Machines to Converse.](https://github.com/jiweil/Jiwei
 
 Junyang Lin, Xu Sun, Xuancheng Ren, Muyu Li, Qi Su. 2018. [Learning When to Concentrate or Divert Attention: Self-Adaptive Attention Temperature for Neural Machine Translation.](https://arxiv.org/abs/1808.07374) arXiv:1808.07374.
 
-Minh-Thang Luong, Hieu Pham, Christopher D. Manning. 2015. [Effective Approaches to Attention-based Neural Machine Translation.](https://arxiv.org/abs/1508.04025) arXiv:1507.04025.
+Minh-Thang Luong, Hieu Pham, Christopher D. Manning. 2015. [Effective Approaches to Attention-based Neural Machine Translation.](https://arxiv.org/abs/1508.04025) In EMNLP.
 
 Hideya Mino, Masao Utiyama, Eiichiro Sumita, Takenobu Tokunaga. 2017. [Key-value Attention Mechanism for Neural Machine Translation.](http://aclweb.org/anthology/I17-2049) In Proceedings of the 8th International Joint Conference on Natural Language Processing.
 
 Ofir Press, Lior Wolf. 2016. [Using the Output Embedding to Improve Language Models.](https://arxiv.org/abs/1608.05859) arXiv:1608.05859.
 
 Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin. 2017. [Attention Is All You Need.](https://arxiv.org/abs/1706.03762) In NIPS.
+
+Oriol Vinyals, Meire Fortunato, Navdeep Jaitly. 2015. [Pointer Networks.](https://arxiv.org/abs/1506.03134) In NIPS.
 
 Sam Wiseman, Alexander M. Rush. [Sequence-to-Sequence Learning as Beam-Search Optimization.](https://arxiv.org/abs/1606.02960) arXiv:1606.02960.
 

@@ -1,6 +1,6 @@
-# The Transformer
+# Pointer Networks
 
-A minimal PyTorch implementation of the Transformer for sequence to sequence learning.
+A minimal PyTorch implementation of Pointer Networks.
 
 Supported features:
 - Mini-batch training with CUDA
@@ -27,4 +27,3 @@ python train.py model vocab.src vocab.tgt training_data.csv num_epoch
 To predict:
 ```
 python predict.py model.epochN vocab.src vocab.tgt test_data
-```
