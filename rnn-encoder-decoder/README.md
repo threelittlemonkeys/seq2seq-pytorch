@@ -1,4 +1,4 @@
-# RNN Encoder-Decoder
+# RNN Encoder-Decoder in PyTorch
 
 A PyTorch implementation of the RNN Encoder-Decoder for sequence to sequence learning.
 

@@ -1,4 +1,4 @@
-# Pointer Networks
+# Pointer Networks in PyTorch
 
 A minimal PyTorch implementation of Pointer Networks.
 
