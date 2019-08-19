@@ -1,4 +1,4 @@
-import sys
+from model import *
 from utils import *
 
 def load_model():

@@ -1,7 +1,6 @@
-import sys
-import time
+from model import *
 from utils import *
-from os.path import isfile
+# from evaluate import *
 
 def load_data():
     data = []
@@ -56,7 +55,7 @@ def train():
     for ei in range(epoch + 1, epoch + num_epochs + 1):
         ii = 0
         loss_sum = 0
-        timer = time.time()
+        timer = time()
         for x, y in data:
             ii += 1
             loss = 0
@@ -79,7 +78,7 @@ def train():
             loss = loss.item()
             loss_sum += loss
             # print("epoch = %d, iteration = %d, loss = %f" % (ei, ii, loss))
-        timer = time.time() - timer
+        timer = time() - timer
         loss_sum /= len(data)
         if ei % SAVE_EVERY and ei != epoch + num_epochs:
             save_checkpoint("", None, None, ei, loss_sum, timer)

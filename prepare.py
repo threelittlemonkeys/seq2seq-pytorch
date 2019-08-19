@@ -1,6 +1,4 @@
-import sys
-from model import *
-from utils import tokenize
+from utils import *
 
 def load_data():
     data = []

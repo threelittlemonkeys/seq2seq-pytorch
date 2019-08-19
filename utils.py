@@ -1,5 +1,9 @@
+import sys
 import re
-from model import *
+from time import time
+from os.path import isfile
+from parameters import *
+from collections import defaultdict
 
 def normalize(x):
     # x = re.sub("[^ ,.?!a-zA-Z0-9\u3131-\u318E\uAC00-\uD7A3]+", " ", x)
@@ -49,6 +53,17 @@ def save_checkpoint(filename, enc, dec, epoch, loss, time):
         checkpoint["loss"] = loss
         torch.save(checkpoint, filename + ".epoch%d" % epoch)
         print("saved model at epoch %d" % epoch)
+
+def cudify(f):
+    return lambda *x: f(*x).cuda() if CUDA else f(*x)
+
+Tensor = cudify(torch.Tensor)
+LongTensor = cudify(torch.LongTensor)
+zeros = cudify(torch.zeros)
+
+def maskset(x):
+    mask = x.data.eq(PAD_IDX)
+    return (mask, x.size(1) - mask.sum(1)) # set of mask and lengths
 
 def mat2csv(m, ch = True, rh = False, nd = 4, delim ="\t"):
     f = "%%.%df" % nd
