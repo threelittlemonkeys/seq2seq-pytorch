@@ -4,36 +4,25 @@ from utils import *
 
 def load_data():
     data = []
-    src_batch = []
-    tgt_batch = []
-    src_batch_len = 0
-    tgt_batch_len = 0
-    print("loading data...")
+    bx = [] # source sequence batch
+    by = [] # target sequence batch
     src_vocab = load_vocab(sys.argv[2])
     tgt_vocab = load_vocab(sys.argv[3])
+    print("loading %s" % sys.argv[4])
     fo = open(sys.argv[4], "r")
     for line in fo:
-        line = line.strip()
-        src, tgt = line.split("\t")
-        src = [int(i) for i in src.split(" ")] + [EOS_IDX]
-        tgt = [int(i) for i in tgt.split(" ")] + [EOS_IDX]
-        # src.reverse() # reversing source sequence
-        if len(src) > src_batch_len:
-            src_batch_len = len(src)
-        if len(tgt) > tgt_batch_len:
-            tgt_batch_len = len(tgt)
-        src_batch.append(src)
-        tgt_batch.append(tgt)
-        if len(src_batch) == BATCH_SIZE:
-            for seq in src_batch:
-                seq.extend([PAD_IDX] * (src_batch_len - len(seq)))
-            for seq in tgt_batch:
-                seq.extend([PAD_IDX] * (tgt_batch_len - len(seq)))
-            data.append((LongTensor(src_batch), LongTensor(tgt_batch)))
-            src_batch = []
-            tgt_batch = []
-            src_batch_len = 0
-            tgt_batch_len = 0
+        x, y = line.strip().split("\t")
+        x = [int(i) for i in x.split(" ")]
+        y = [int(i) for i in y.split(" ")]
+        # x.reverse() # reversing source sequence
+        bx.append(x)
+        by.append(y)
+        if len(by) == BATCH_SIZE:
+            _, bx = batchify(None, bx, eos = True)
+            _, by = batchify(None, by, eos = True)
+            data.append((bx, by))
+            bx = []
+            by = []
     fo.close()
     print("data size: %d" % (len(data) * BATCH_SIZE))
     print("batch size: %d" % BATCH_SIZE)
