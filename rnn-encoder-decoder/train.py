@@ -9,8 +9,8 @@ def load_data():
     src_batch_len = 0
     tgt_batch_len = 0
     print("loading data...")
-    src_vocab = load_vocab(sys.argv[2], "src")
-    tgt_vocab = load_vocab(sys.argv[3], "tgt")
+    src_vocab = load_vocab(sys.argv[2])
+    tgt_vocab = load_vocab(sys.argv[3])
     fo = open(sys.argv[4], "r")
     for line in fo:
         line = line.strip()
