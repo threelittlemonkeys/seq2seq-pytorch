@@ -20,8 +20,14 @@ def tokenize(x, unit):
     if unit == "word":
         return x.split(" ")
 
-def load_vocab(filename, ext):
-    print("loading vocab.%s..." % ext)
+def save_data(filename, data):
+    fo = open(filename, "w")
+    for seq in data:
+        fo.write(" ".join(seq[0]) + "\t" + " ".join(seq[1]) + "\n")
+    fo.close()
+
+def load_vocab(filename):
+    print("loading %s..." % filename)
     vocab = {}
     fo = open(filename)
     for line in fo:
@@ -29,6 +35,12 @@ def load_vocab(filename, ext):
         vocab[line] = len(vocab)
     fo.close()
     return vocab
+
+def save_vocab(filename, vocab):
+    fo = open(filename, "w")
+    for w, _ in sorted(vocab.items(), key = lambda x: x[1]):
+        fo.write("%s\n" % w)
+    fo.close()
 
 def load_checkpoint(filename, enc = None, dec = None):
     print("loading model...")
@@ -60,6 +72,19 @@ def cudify(f):
 Tensor = cudify(torch.Tensor)
 LongTensor = cudify(torch.LongTensor)
 zeros = cudify(torch.zeros)
+
+def batchify(xc, xw, sos = False, eos = False, minlen = 0):
+    xw_len = max(minlen, max(len(x) for x in xw))
+    if xc:
+        xc_len = max(minlen, max(len(w) for x in xc for w in x))
+        pad = [[PAD_IDX] * (xc_len + 2)]
+        xc = [[[SOS_IDX] + w + [EOS_IDX] + [PAD_IDX] * (xc_len - len(w)) for w in x] for x in xc]
+        xc = [(pad if sos else []) + x + (pad * (xw_len - len(x) + eos)) for x in xc]
+        xc = LongTensor(xc)
+    sos = [SOS_IDX] if sos else []
+    eos = [EOS_IDX] if eos else []
+    xw = [sos + list(x) + eos + [PAD_IDX] * (xw_len - len(x)) for x in xw]
+    return xc, LongTensor(xw)
 
 def maskset(x):
     mask = x.data.eq(PAD_IDX)
