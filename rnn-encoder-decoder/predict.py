@@ -22,7 +22,7 @@ def greedy_search(dec, tgt_vocab, data, eos, dec_out, heatmap):
             continue
         data[i][3].append(y[i])
         data[i][4] += p[i]
-        eos[i] = y[i] == EOS_IDX
+        eos[i] = (y[i] == EOS_IDX)
         heatmap[i].append([tgt_vocab[y[i]]] + dec.attn.Va[i][0].tolist())
     return dec_in
 
@@ -58,7 +58,7 @@ def beam_search(dec, tgt_vocab, data, t, eos, dec_out, heatmap):
         x = sorted(zip(d1, m1), key = lambda x: -x[0][4])[:BEAM_SIZE]
         for k, (a, b) in enumerate(x, j):
             data[k] = a
-            eos[k] = a[3][-1] == EOS_IDX
+            eos[k] = (a[3][-1] == EOS_IDX)
             heatmap[k] = b
             if VERBOSE >= 2:
                 print([tgt_vocab[x] for x in a[3]] + [round(a[4].item(), 4)])
