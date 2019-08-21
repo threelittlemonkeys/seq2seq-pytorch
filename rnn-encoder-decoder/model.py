@@ -6,7 +6,7 @@ class encoder(nn.Module):
         super().__init__()
 
         # architecture
-        self.embed = nn.Embedding(vocab_size, sum(EMBED.values()), padding_idx = PAD_IDX)
+        self.embed = embed(-1, vocab_size)
         self.rnn = getattr(nn, RNN_TYPE)(
             input_size = sum(EMBED.values()),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
@@ -31,7 +31,7 @@ class encoder(nn.Module):
 
     def forward(self, x, mask):
         self.hidden = self.init_state()
-        x = self.embed(x)
+        x = self.embed(None, x)
         x = nn.utils.rnn.pack_padded_sequence(x, mask[1], batch_first = True)
         h, _ = self.rnn(x, self.hidden)
         h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first = True)
@@ -43,7 +43,7 @@ class decoder(nn.Module):
         self.feed_input = True # input feeding
 
         # architecture
-        self.embed = nn.Embedding(vocab_size, sum(EMBED.values()), padding_idx = PAD_IDX)
+        self.embed = embed(-1, vocab_size)
         self.rnn = getattr(nn, RNN_TYPE)(
             input_size = sum(EMBED.values()) + (HIDDEN_SIZE if self.feed_input else 0),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
@@ -61,7 +61,7 @@ class decoder(nn.Module):
             self = self.cuda()
 
     def forward(self, dec_in, enc_out, t, mask):
-        x = self.embed(dec_in)
+        x = self.embed(None, dec_in)
         if self.feed_input:
             x = torch.cat((x, self.attn.hidden), 2)
         h, _ = self.rnn(x, self.hidden)
