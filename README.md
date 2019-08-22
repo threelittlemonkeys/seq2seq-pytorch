@@ -25,6 +25,8 @@ Andrew M. Dai, Quoc V. Le. [Semi-supervised Sequence Learning.](https://arxiv.or
 
 Zihang Dai, Zhilin Yang, Yiming Yang, Jaime Carbonell, Quoc V. Le, Ruslan Salakhutdinov. 2019. [Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context.](https://arxiv.org/abs/1901.02860) In ACL.
 
+Jiachen Du, Wenjie Li , Yulan He , Ruifeng Xu , Lidong Bing, Xuan Wang. 2018. [Variational Autoregressive Decoder for Neural Response Generation.](https://aclweb.org/anthology/D18-1354) In EMNLP.
+
 Jonas Gehring, Michael Auli, David Grangier, Denis Yarats, Yann N. Dauphin. 2017. [Convolutional Sequence to Sequence Learning.](https://arxiv.org/abs/1705.03122) arXiv:1705.03122.
 
 Alex Graves. 2013. [Generating Sequences With Recurrent Neural Networks.](https://arxiv.org/abs/1308.0850) arXiv:1308.0850.
@@ -46,6 +48,8 @@ Hideya Mino, Masao Utiyama, Eiichiro Sumita, Takenobu Tokunaga. 2017. [Key-value
 Ofir Press, Lior Wolf. 2016. [Using the Output Embedding to Improve Language Models.](https://arxiv.org/abs/1608.05859) arXiv:1608.05859.
 
 Abigail See, Peter J. Liu, Christopher D. Manning. 2017. [Get To The Point: Summarization with Pointer-Generator Networks.](https://arxiv.org/abs/1704.04368) arXiv:1704.04368.
+
+Xiaoyu Shen, Hui Su, Shuzi Niu, Vera Demberg. 2018. [Improving Variational Encoder-Decoders in Dialogue Generation.](https://arxiv.org/abs/1802.02032) In AAAI.
 
 Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin. 2017. [Attention Is All You Need.](https://arxiv.org/abs/1706.03762) In NIPS.
 
