@@ -5,6 +5,7 @@ A minimal PyTorch implementation of Pointer Networks.
 Supported features:
 - Mini-batch training with CUDA
 - Vectorized computation of alignment scores in the attention layer
+- Beam search decoding
 
 ## Usage
 
