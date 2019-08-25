@@ -74,12 +74,12 @@ class embed(nn.Module):
                 bidirectional = self.num_dirs == 2
             )
 
-        def init_state(self, b): # initialize the cell state
+        def init_state(self, b): # initialize RNN states
             n = self.num_layers * self.num_dirs
             h = self.dim // self.num_dirs
             hs = zeros(n, b, h) # hidden state
             if self.rnn_type == "LSTM":
-                cs = zeros(n, b, h) # cell state
+                cs = zeros(n, b, h) # LSTM cell state
                 return (hs, cs)
             return hs
 
@@ -89,7 +89,7 @@ class embed(nn.Module):
             x = self.embed(x) # [B * Lw, Lc, embed_size (H)]
             h, s = self.rnn(x, s)
             h = s if self.rnn_type == "GRU" else s[-1]
-            h = torch.cat([x for x in h[-self.num_dirs:]], 1) # final cell state [B * Lw, H]
+            h = torch.cat([x for x in h[-self.num_dirs:]], 1) # final hidden state [B * Lw, H]
             h = h.view(BATCH_SIZE, -1, h.size(1)) # [B, Lw, H]
             return h
 
