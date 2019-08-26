@@ -80,7 +80,7 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
         self.h = None # attention vector (for input feeding)
 
         # architecture
-        if self.type[:5] == "local":
+        if self.type in ("local-m", "local-p"):
             self.window_size = 5
             if self.type[-1] == "p":
                 self.Wp = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
@@ -136,7 +136,7 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
         return a # alignment vector as attention weights
 
     def forward(self, ht, hs, t, mask):
-        if self.type[:5] == "local":
+        if self.type in ("local-m", "local-p"):
             hs, mask, k = self.window(ht, hs, t, mask)
         else:
             k = None
