@@ -136,7 +136,7 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
         return a # alignment vector as attention weights
 
     def forward(self, ht, hs, t, mask):
-        if self.type in ("local-m", "local-p"):
+        if self.type[:5] == "local":
             hs, mask, k = self.window(ht, hs, t, mask)
         else:
             k = None
