@@ -2,12 +2,12 @@ from utils import *
 from embedding import embed
 
 class ptrnet(nn.Module): # pointer networks
-    def __init__(self, src_vocab_size, tgt_vocab_size):
+    def __init__(self, vocab_size):
         super().__init__()
 
         # architecture
-        self.enc = encoder(src_vocab_size)
-        self.dec = decoder(tgt_vocab_size)
+        self.enc = encoder(vocab_size)
+        self.dec = decoder(vocab_size)
         self = self.cuda() if CUDA else self
 
     def forward(self, x, y): # for training
@@ -19,12 +19,10 @@ class ptrnet(nn.Module): # pointer networks
         self.dec.hidden = self.enc.hidden
         for t in range(y.size(1)):
             dec_out = self.dec(dec_in, enc_out, t, mask)
-            print(x)
-            print(y)
-            exit()
-            loss += F.nll_loss(dec_out, y[:, t], ignore_index = PAD_IDX, reduction = "sum")
+            loss += F.nll_loss(dec_out, y[:, t] - 1, ignore_index = PAD_IDX -1)
             dec_in = y[:, t].unsqueeze(1) # teacher forcing
-        loss /= y.data.gt(0).sum().float() # divide by the number of unpadded tokens
+        loss /= y.size(1) # divide by senquence length
+        # loss /= y.gt(0).sum().float() # divide by the number of unpadded tokens
         return loss
 
     def decode(self): # for inference
@@ -65,7 +63,6 @@ class encoder(nn.Module):
 class decoder(nn.Module):
     def __init__(self, vocab_size):
         super().__init__()
-        self.feed_input = True # input feeding
 
         # architecture
         self.embed = embed(-1, vocab_size)

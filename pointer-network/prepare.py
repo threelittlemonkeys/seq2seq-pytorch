@@ -2,9 +2,7 @@ from utils import *
 
 def load_data():
     data = []
-    src_vocab = {PAD: PAD_IDX, SOS: SOS_IDX, EOS: EOS_IDX, UNK: UNK_IDX}
-    tgt_vocab = {PAD: PAD_IDX, SOS: SOS_IDX, EOS: EOS_IDX}
-    offset = len(tgt_vocab)
+    vocab = {PAD: PAD_IDX, SOS: SOS_IDX, EOS: EOS_IDX, UNK: UNK_IDX}
     fo = open(sys.argv[1])
     for line in fo:
         src, tgt = line.split("\t")
@@ -12,28 +10,23 @@ def load_data():
         tgt_tokens = tokenize(tgt, UNIT)
         if len(src_tokens) < MIN_LEN or len(src_tokens) > MAX_LEN:
             continue
-        if len(tgt_tokens) < MIN_LEN or len(tgt_tokens) > MAX_LEN:
-            continue
         src_seq = []
         tgt_seq = []
         for w in src_tokens:
-            if w not in src_vocab:
-                src_vocab[w] = len(src_vocab)
-            src_seq.append(str(src_vocab[w]))
+            if w not in vocab:
+                vocab[w] = len(vocab)
+            src_seq.append(str(vocab[w]))
         for w in tgt_tokens:
-            if w not in tgt_vocab:
-                for i in range(len(tgt_vocab), int(w) + offset + 1):
-                    tgt_vocab[str(i - offset)] = i
-            tgt_seq.append(str(tgt_vocab[w]))
+            tgt_seq.append(str(int(w) + 1))
+        tgt_seq.append(str(len(src_seq) + 1))
         data.append((src_seq, tgt_seq))
     fo.close()
     data.sort(key = lambda x: -len(x[0])) # sort by source sequence length
-    return data, src_vocab, tgt_vocab
+    return data, vocab
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit("Usage: %s training_data" % sys.argv[0])
-    data, src_vocab, tgt_vocab = load_data()
+    data, vocab = load_data()
     save_data(sys.argv[1] + ".csv", data)
-    save_vocab(sys.argv[1] + ".vocab.src", src_vocab)
-    save_vocab(sys.argv[1] + ".vocab.tgt", tgt_vocab)
+    save_vocab(sys.argv[1] + ".vocab", vocab)
