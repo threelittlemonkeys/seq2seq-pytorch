@@ -15,12 +15,13 @@ class ptrnet(nn.Module): # pointer networks
         self.zero_grad()
         mask = maskset(x)
         enc_out = self.enc(x, mask)
-        dec_in = LongTensor([SOS_IDX] * BATCH_SIZE).unsqueeze(1)
+        dec_in = LongTensor([SOS_IDX] * BATCH_SIZE)
         self.dec.hidden = self.enc.hidden
         for t in range(y.size(1)):
-            dec_out = self.dec(dec_in, enc_out, t, mask)
-            loss += F.nll_loss(dec_out, y[:, t] - 1, ignore_index = PAD_IDX -1)
-            dec_in = y[:, t].unsqueeze(1) # teacher forcing
+            dec_out = self.dec(dec_in.unsqueeze(1), enc_out, t, mask)
+            dec_in = y[:, t] - 1 # teacher forcing
+            loss += F.nll_loss(dec_out, dec_in, ignore_index = PAD_IDX - 1)
+            dec_in = LongTensor([x[i, j] for i, j in enumerate(dec_in)])
         loss /= y.size(1) # divide by senquence length
         # loss /= y.gt(0).sum().float() # divide by the number of unpadded tokens
         return loss

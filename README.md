@@ -37,6 +37,8 @@ Jeremy Hylton. 1993. [The Complete Works of William Shakespeare.](http://shakesp
 
 Łukasz Kaiser, Samy Bengio. 2018. [Discrete Autoencoders for Sequence Models.](https://arxiv.org/abs/1801.09797) arXiv:1801.09797.
 
+Jing Li, Aixin Sun, Shafiq Joty. 2018. [SEGBOT: A Generic Neural Text Segmentation Model with Pointer Network.](https://www.ijcai.org/proceedings/2018/0579.pdf) In Proceedings of the Twenty-Seventh International Joint Conference on Artificial Intelligence.
+
 Jiwei Li. 2017. [Teaching Machines to Converse.](https://github.com/jiweil/Jiwei-Thesis/blob/master/thesis.pdf) Doctoral dissertation. Stanford University.
 
 Junyang Lin, Xu Sun, Xuancheng Ren, Muyu Li, Qi Su. 2018. [Learning When to Concentrate or Divert Attention: Self-Adaptive Attention Temperature for Neural Machine Translation.](https://arxiv.org/abs/1808.07374) arXiv:1808.07374.
@@ -64,5 +66,7 @@ Sam Wiseman, Alexander M. Rush. [Sequence-to-Sequence Learning as Beam-Search Op
 Yonghui Wu, Mike Schuster, Zhifeng Chen, Quoc V. Le, Mohammad Norouzi, Wolfgang Macherey, Maxim Krikun, Yuan Cao, Qin Gao, Klaus Macherey, Jeff Klingner, Apurva Shah, Melvin Johnson, Xiaobing Liu, Łukasz Kaiser, Stephan Gouws, Yoshikiyo Kato, Taku Kudo, Hideto Kazawa, Keith Stevens, George Kurian, Nishant Patil, Wei Wang, Cliff Young, Jason Smith, Jason Riesa, Alex Rudnick, Oriol Vinyals, Greg Corrado, Macduff Hughes, Jeffrey Dean. 2016. [Google's Neural Machine Translation System: Bridging the Gap between Human and Machine Translation.](https://arxiv.org/abs/1609.08144) arXiv:1609.08144.
 
 Ziang Xie. 2018. [Neural Text Generation: A Practical Guide.](http://cs.stanford.edu/~zxie/textgen.pdf) http://cs.stanford.edu/~zxie/textgen.pdf.
+
+Feifei Zhai, Saloni Potdar, Bing Xiang, Bowen Zhou. 2017. [Neural Models for Sequence Chunking.](https://arxiv.org/abs/1701.04027) In AAAI.
 
 Saizheng Zhang, Emily Dinan, Jack Urbanek, Arthur Szlam, Douwe Kiela, Jason Weston. 2018. [Personalizing Dialogue Agents: I have a dog, do you have pets too?.](https://arxiv.org/abs/1801.07243) arXiv:1801.07243.

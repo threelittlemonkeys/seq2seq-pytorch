@@ -1,6 +1,6 @@
 # RNN Encoder-Decoder in PyTorch
 
-A minimal PyTorch implementation of the RNN Encoder-Decoder for sequence to sequence learning.
+A minimal PyTorch implementation of RNN Encoder-Decoder for sequence to sequence learning.
 
 Supported features:
 - Mini-batch training with CUDA
@@ -8,8 +8,9 @@ Supported features:
 - Global and local attention (Luong et al 2015)
 - Vectorized computation of alignment scores in the attention layer
 - Input feeding (Luong et al 2015)
-- Beam search decoding
 - CopyNet (Gu et al 2016)
+- Beam search decoding
+- Attention visualization
 
 ## Usage
 

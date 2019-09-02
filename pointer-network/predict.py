@@ -2,17 +2,13 @@ from model import *
 from utils import *
 
 def load_model():
-    src_vocab = load_vocab(sys.argv[2])
-    tgt_vocab = load_vocab(sys.argv[3])
-    tgt_vocab = [x for x, _ in sorted(tgt_vocab.items(), key = lambda x: x[1])]
-    enc = encoder(len(src_vocab))
-    dec = decoder(len(tgt_vocab))
-    print(enc)
-    print(dec)
-    load_checkpoint(sys.argv[1], enc, dec)
-    return enc, dec, src_vocab, tgt_vocab
+    vocab = load_vocab(sys.argv[2])
+    model = ptrnet(len(vocab))
+    print(model)
+    load_checkpoint(sys.argv[1], model)
+    return model, vocab
 
-def greedy_search(dec, tgt_vocab, batch, eos, dec_out, heatmap):
+def greedy_search(dec, batch, eos, dec_out, heatmap):
     p, dec_in = dec_out.topk(1)
     y = dec_in.view(-1).tolist()
     for i in range(len(eos)):
@@ -21,10 +17,10 @@ def greedy_search(dec, tgt_vocab, batch, eos, dec_out, heatmap):
         batch[i][3].append(y[i])
         batch[i][4] += p[i]
         eos[i] = (y[i] == EOS_IDX)
-        heatmap[i].append([tgt_vocab[y[i]]] + dec.attn.a[i][0].tolist())
+        heatmap[i].append([y[i]] + dec.attn.a[i].tolist())
     return dec_in
 
-def beam_search(dec, tgt_vocab, batch, t, eos, dec_out, heatmap):
+def beam_search(dec, batch, t, eos, dec_out, heatmap):
     p, y = dec_out[:len(eos)].topk(BEAM_SIZE)
     p += Tensor([-10000 if b else a[4] for a, b in zip(batch, eos)]).unsqueeze(1)
     p = p.view(len(eos) // BEAM_SIZE, -1)
@@ -39,7 +35,7 @@ def beam_search(dec, tgt_vocab, batch, t, eos, dec_out, heatmap):
             print("beam[%d][%d] =" % (t, i))
             for k in range(0, len(p), BEAM_SIZE):
                 for a, b in zip(y[k:k + BEAM_SIZE], p[k:k + BEAM_SIZE]):
-                    print(((tgt_vocab[a]), round(b.item(), 4)), end = ", ")
+                    print((a, round(b.item(), 4)), end = ", ")
                 print("\n")
         for p, k in zip(*p.topk(BEAM_SIZE)):
             q = j + k // BEAM_SIZE
@@ -47,7 +43,7 @@ def beam_search(dec, tgt_vocab, batch, t, eos, dec_out, heatmap):
             b1[-1][3] = b1[-1][3] + [y[k]]
             b1[-1][4] = p
             m1.append(heatmap[q].copy())
-            m1[-1].append([tgt_vocab[y[k]]] + dec.attn.a[q][0][:len(batch[j][1]) + 1].tolist())
+            m1[-1].append([y[k]] + dec.attn.a[q][0][:len(batch[j][1]) + 1].tolist())
         for k in filter(lambda x: eos[j + x], range(BEAM_SIZE)):
             b1.append(batch[j + k])
             m1.append(heatmap[j + k])
@@ -59,14 +55,14 @@ def beam_search(dec, tgt_vocab, batch, t, eos, dec_out, heatmap):
             eos[k] = (a[3][-1] == EOS_IDX)
             heatmap[k] = b
             if VERBOSE >= 2:
-                print([tgt_vocab[x] for x in a[3]] + [round(a[4].item(), 4)])
+                print([x for x in a[3]] + [round(a[4].item(), 4)])
         if VERBOSE >= 2:
             print()
     dec_in = [x[3][-1] if len(x[3]) else SOS_IDX for x in batch]
     dec_in = LongTensor(dec_in).unsqueeze(1)
     return dec_in
 
-def run_model(enc, dec, tgt_vocab, batch):
+def run_model(model, batch):
     t = 0
     eos = [False for _ in batch] # number of completed sequences in the batch
     while len(batch) < BATCH_SIZE:
@@ -74,18 +70,16 @@ def run_model(enc, dec, tgt_vocab, batch):
     batch.sort(key = lambda x: -len(x[2]))
     _, bxw = batchify(None, [x[2] for x in batch], eos = True)
     mask = maskset(bxw)
-    enc_out = enc(bxw, mask)
+    enc_out = model.enc(bxw, mask)
     dec_in = LongTensor([SOS_IDX] * BATCH_SIZE).unsqueeze(1)
-    dec.hidden = enc.hidden
-    if dec.feed_input:
-        dec.attn.h = zeros(BATCH_SIZE, 1, HIDDEN_SIZE)
+    model.dec.hidden = model.enc.hidden
     heatmap = [[[""] + x[1] + [EOS]] for x in batch[:len(eos)]]
     while sum(eos) < len(eos) and t < MAX_LEN:
-        dec_out = dec(dec_in, enc_out, t, mask)
+        dec_out = model.dec(dec_in, enc_out, t, mask)
         if BEAM_SIZE == 1:
-            dec_in = greedy_search(dec, tgt_vocab, batch, eos, dec_out, heatmap)
+            dec_in = greedy_search(model.dec, batch, eos, dec_out, heatmap)
         else:
-            dec_in = beam_search(dec, tgt_vocab, batch, t, eos, dec_out, heatmap)
+            dec_in = beam_search(model.dec, batch, t, eos, dec_out, heatmap)
         t += 1
     batch, heatmap = zip(*sorted(zip(batch, heatmap), key = lambda x: (x[0][0], -x[0][4])))
     if VERBOSE >= 1:
@@ -93,31 +87,32 @@ def run_model(enc, dec, tgt_vocab, batch):
             if VERBOSE < 2 and i % BEAM_SIZE:
                 continue
             print("heatmap[%d] =" % i)
+            print(heatmap[i])
+            exit()
             print(mat2csv(heatmap[i], rh = True))
     batch = [x for i, x in enumerate(batch) if not i % BEAM_SIZE]
-    return [(x[1], [tgt_vocab[x] for x in x[3][:-1]], x[4].item()) for x in batch]
+    return [(x[1], [x for x in x[3][:-1]], x[4].item()) for x in batch]
 
-def predict(filename, enc, dec, src_vocab, tgt_vocab):
+def predict(filename, model, vocab):
     data = []
     result = []
     fo = open(filename)
     for idx, line in enumerate(fo):
         tkn = tokenize(line, UNIT)
-        x = [src_vocab[i] if i in src_vocab else UNK_IDX for i in tkn]
+        x = [vocab[i] if i in vocab else UNK_IDX for i in tkn]
         data.extend([[idx, tkn, x, [], 0] for _ in range(BEAM_SIZE)])
     fo.close()
     with torch.no_grad():
-        enc.eval()
-        dec.eval()
+        model.eval()
         for i in range(0, len(data), BATCH_SIZE):
             batch = data[i:i + BATCH_SIZE]
-            for y in run_model(enc, dec, tgt_vocab, batch):
+            for y in run_model(model, batch):
                 yield y
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        sys.exit("Usage: %s model vocab.src vocab.tgt test_data" % sys.argv[0])
+    if len(sys.argv) != 4:
+        sys.exit("Usage: %s model vocab test_data" % sys.argv[0])
     print("cuda: %s" % CUDA)
-    result = predict(sys.argv[4], *load_model())
+    result = predict(sys.argv[3], *load_model())
     for x, y, p in result:
         print((x, y))
