@@ -16,51 +16,50 @@ def greedy_search(dec, batch, eos, dec_out, heatmap):
             continue
         batch[i][3].append(y[i])
         batch[i][4] += p[i]
-        eos[i] = (y[i] == EOS_IDX)
+        eos[i] = (y[i] == len(batch[i][1]))
         heatmap[i].append([y[i]] + dec.attn.a[i].tolist())
     return dec_in
 
 def beam_search(dec, batch, t, eos, dec_out, heatmap):
-    p, y = dec_out[:len(eos)].topk(BEAM_SIZE)
-    p += Tensor([-10000 if b else a[4] for a, b in zip(batch, eos)]).unsqueeze(1)
-    p = p.view(len(eos) // BEAM_SIZE, -1)
-    y = y.view(len(eos) // BEAM_SIZE, -1)
-    if t == 0:
-        p = p[:, :BEAM_SIZE]
-        y = y[:, :BEAM_SIZE]
-    for i, (p, y) in enumerate(zip(p, y)):
+    bp, by = dec_out[:len(eos)].topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
+    bp += Tensor([-10000 if b else a[4] for a, b in zip(batch, eos)]).unsqueeze(1) # update
+    bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
+    by = by.view(-1, BEAM_SIZE ** 2)
+    if t == 0: # remove non-first duplicate beams
+        bp = bp[:, :BEAM_SIZE]
+        by = by[:, :BEAM_SIZE]
+    for i, (p, y) in enumerate(zip(bp, by)): # for each sequence
+        y = y.tolist()
         j = i * BEAM_SIZE
         b1, m1 = [], [] # batch and heatmap to be updated
         if VERBOSE >= 2:
-            print("beam[%d][%d] =" % (t, i))
-            for k in range(0, len(p), BEAM_SIZE):
-                for a, b in zip(y[k:k + BEAM_SIZE], p[k:k + BEAM_SIZE]):
-                    print((a, round(b.item(), 4)), end = ", ")
-                print("\n")
-        for p, k in zip(*p.topk(BEAM_SIZE)):
+            for k in range(0, len(p), BEAM_SIZE): # for each beam
+                q = j + k // BEAM_SIZE
+                w = [(next(reversed(batch[q][3]), SOS_IDX), batch[q][4])] # previous token
+                w += list(zip(y, p))[k:k + BEAM_SIZE] # current candidates
+                w = [(a, round(b.item(), 4)) for a, b in w]
+                print("beam[%d][%d][%d] =" % (i, t, q), w[0], "->", w[1:])
+        for p, k in zip(*p.topk(BEAM_SIZE)): # for each n-best candidate
             q = j + k // BEAM_SIZE
             b1.append(batch[q].copy())
-            b1[-1][3] = b1[-1][3] + [y[k]]
-            b1[-1][4] = p
+            b1[-1][3] = b1[-1][3] + [y[k]] # word
+            b1[-1][4] = p # probability
             m1.append(heatmap[q].copy())
-            m1[-1].append([y[k]] + dec.attn.a[q][0][:len(batch[j][1]) + 1].tolist())
-        for k in filter(lambda x: eos[j + x], range(BEAM_SIZE)):
+            m1[-1].append([y[k]] + dec.attn.a[q][:len(batch[j][1]) + 1].tolist())
+        for k in filter(lambda x: eos[j + x], range(BEAM_SIZE)): # append completed sequences
             b1.append(batch[j + k])
             m1.append(heatmap[j + k])
-        if VERBOSE >= 2:
-            print("output[%d][%d] =" % (t, i))
-        x = sorted(zip(b1, m1), key = lambda x: -x[0][4])[:BEAM_SIZE]
-        for k, (a, b) in enumerate(x, j):
-            batch[k] = a
-            eos[k] = (a[3][-1] == EOS_IDX)
-            heatmap[k] = b
+        topk = sorted(zip(b1, m1), key = lambda x: -x[0][4])[:BEAM_SIZE]
+        for k, (b1, m1) in enumerate(topk, j):
+            batch[k] = b1
+            eos[k] = (b1[3][-1] == len(batch[k][1]))
+            heatmap[k] = m1
             if VERBOSE >= 2:
-                print([x for x in a[3]] + [round(a[4].item(), 4)])
+                print("output[%d][%d][%d] = " % (i, t, k), end = "")
+                print((b1[3], round(b1[4].item(), 4)))
         if VERBOSE >= 2:
             print()
-    dec_in = [x[3][-1] if len(x[3]) else SOS_IDX for x in batch]
-    dec_in = LongTensor(dec_in).unsqueeze(1)
-    return dec_in
+    return LongTensor([next(reversed(x[3]), SOS_IDX) for x in batch]).unsqueeze(1)
 
 def run_model(model, batch):
     t = 0
@@ -88,7 +87,6 @@ def run_model(model, batch):
                 continue
             print("heatmap[%d] =" % i)
             print(heatmap[i])
-            exit()
             print(mat2csv(heatmap[i], rh = True))
     batch = [x for i, x in enumerate(batch) if not i % BEAM_SIZE]
     return [(x[1], [x for x in x[3][:-1]], x[4].item()) for x in batch]
@@ -100,7 +98,7 @@ def predict(filename, model, vocab):
     for idx, line in enumerate(fo):
         tkn = tokenize(line, UNIT)
         x = [vocab[i] if i in vocab else UNK_IDX for i in tkn]
-        data.extend([[idx, tkn, x, [], 0] for _ in range(BEAM_SIZE)])
+        data.extend([[idx, tkn, x, [], Tensor([0])] for _ in range(BEAM_SIZE)])
     fo.close()
     with torch.no_grad():
         model.eval()

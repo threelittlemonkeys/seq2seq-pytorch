@@ -26,7 +26,7 @@ class ptrnet(nn.Module): # pointer networks
         # loss /= y.gt(0).sum().float() # divide by the number of unpadded tokens
         return loss
 
-    def decode(self): # for inference
+    def decode(self, x): # for inference
         pass
 
 class encoder(nn.Module):

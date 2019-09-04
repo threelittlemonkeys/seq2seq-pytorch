@@ -1,5 +1,6 @@
 from model import *
 from utils import *
+# from evaluate import *
 
 def load_data():
     data = []
@@ -12,6 +13,7 @@ def load_data():
         x, y = line.strip().split("\t")
         x = [int(i) for i in x.split(" ")]
         y = [int(i) for i in y.split(" ")]
+        # x.reverse() # reversing source sequence
         bx.append(x)
         by.append(y)
         if len(by) == BATCH_SIZE:
