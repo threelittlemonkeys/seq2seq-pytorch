@@ -8,19 +8,19 @@ def load_model():
     load_checkpoint(sys.argv[1], model)
     return model, vocab
 
-def greedy_search(dec, batch, eos, dec_out, heatmap):
+def greedy_search(dec, dec_out, batch, eos, heatmap):
     p, dec_in = dec_out.topk(1)
     y = dec_in.view(-1).tolist()
     for i in range(len(eos)):
         if eos[i]:
             continue
+        eos[i] = (y[i] == len(batch[i][1]) or y[i] in batch[i][3])
         batch[i][3].append(y[i])
         batch[i][4] += p[i]
-        eos[i] = (y[i] == len(batch[i][1]))
         heatmap[i].append([y[i]] + dec.attn.a[i].tolist())
     return dec_in
 
-def beam_search(dec, batch, t, eos, dec_out, heatmap):
+def beam_search(dec, dec_out, batch, eos, heatmap, t):
     bp, by = dec_out[:len(eos)].topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
     bp += Tensor([-10000 if b else a[4] for a, b in zip(batch, eos)]).unsqueeze(1) # update
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
@@ -31,7 +31,7 @@ def beam_search(dec, batch, t, eos, dec_out, heatmap):
     for i, (p, y) in enumerate(zip(bp, by)): # for each sequence
         y = y.tolist()
         j = i * BEAM_SIZE
-        b1, m1 = [], [] # batch and heatmap to be updated
+        b1, h1 = [], [] # batch and heatmap to be updated
         if VERBOSE >= 2:
             for k in range(0, len(p), BEAM_SIZE): # for each beam
                 q = j + k // BEAM_SIZE
@@ -44,16 +44,16 @@ def beam_search(dec, batch, t, eos, dec_out, heatmap):
             b1.append(batch[q].copy())
             b1[-1][3] = b1[-1][3] + [y[k]] # word
             b1[-1][4] = p # probability
-            m1.append(heatmap[q].copy())
-            m1[-1].append([y[k]] + dec.attn.a[q][:len(batch[j][1]) + 1].tolist())
+            h1.append(heatmap[q].copy())
+            h1[-1].append([y[k]] + dec.attn.a[q][:len(batch[j][1]) + 1].tolist())
         for k in filter(lambda x: eos[j + x], range(BEAM_SIZE)): # append completed sequences
             b1.append(batch[j + k])
-            m1.append(heatmap[j + k])
-        topk = sorted(zip(b1, m1), key = lambda x: -x[0][4])[:BEAM_SIZE]
-        for k, (b1, m1) in enumerate(topk, j):
+            h1.append(heatmap[j + k])
+        topk = sorted(zip(b1, h1), key = lambda x: -x[0][4])[:BEAM_SIZE]
+        for k, (b1, h1) in enumerate(topk, j):
+            eos[k] = (b1[3][-1] == len(b1[1]) or b1[3][-1] in b1[3][:-1])
             batch[k] = b1
-            eos[k] = (b1[3][-1] == len(batch[k][1]))
-            heatmap[k] = m1
+            heatmap[k] = h1
             if VERBOSE >= 2:
                 print("output[%d][%d][%d] = " % (i, t, k), end = "")
                 print((b1[3], round(b1[4].item(), 4)))
@@ -76,9 +76,9 @@ def run_model(model, batch):
     while sum(eos) < len(eos) and t < MAX_LEN:
         dec_out = model.dec(dec_in, enc_out, t, mask)
         if BEAM_SIZE == 1:
-            dec_in = greedy_search(model.dec, batch, eos, dec_out, heatmap)
+            dec_in = greedy_search(model.dec, dec_out, batch, eos, heatmap)
         else:
-            dec_in = beam_search(model.dec, batch, t, eos, dec_out, heatmap)
+            dec_in = beam_search(model.dec, dec_out, batch, eos, heatmap, t)
         t += 1
     batch, heatmap = zip(*sorted(zip(batch, heatmap), key = lambda x: (x[0][0], -x[0][4])))
     if VERBOSE >= 1:
