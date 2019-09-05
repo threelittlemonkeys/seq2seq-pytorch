@@ -98,3 +98,6 @@ def mat2csv(m, ch = True, rh = False, nd = 4, delim ="\t"):
             csv += str(row[0]) + delim # target sequence
         csv += delim.join([f % x for x in row[rh:]]) + "\n"
     return csv
+
+def f1(p, r):
+    return 2 * p * r / (p + r) if p + r else 0
