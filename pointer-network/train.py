@@ -1,6 +1,6 @@
 from model import *
 from utils import *
-# from evaluate import *
+from evaluate import *
 
 def load_data():
     data = []
@@ -29,7 +29,7 @@ def load_data():
 
 def train():
     print("cuda: %s" % CUDA)
-    num_epochs = int(sys.argv[4])
+    num_epochs = int(sys.argv[-1])
     data, vocab = load_data()
     model = ptrnet(len(vocab))
     enc_optim = torch.optim.Adam(model.enc.parameters(), lr = LEARNING_RATE)
@@ -53,8 +53,13 @@ def train():
             save_checkpoint("", None, ei, loss_sum, timer)
         else:
             save_checkpoint(filename, model, ei, loss_sum, timer)
+        if EVAL_EVERY and (ei % EVAL_EVERY == 0 or ei == epoch + num_epochs):
+            args = [model, vocab]
+            evaluate(predict(sys.argv[4], *args), True)
+            model.train()
+            print()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        sys.exit("Usage: %s model vocab training_data num_epoch" % sys.argv[0])
+    if len(sys.argv) not in [5, 6]:
+        sys.exit("Usage: %s model vocab training_data (validation data) num_epoch" % sys.argv[0])
     train()

@@ -12,8 +12,8 @@ def evaluate(result, summary = False):
         for y in y1:
             tpfp[y] += 1
     for y in sorted(tpfn.keys()):
-        pr = tp[y] / tpfp[y] if tpfp[y] else 0
-        rc = tp[y] / tpfn[y] if tpfn[y] else 0
+        pr = (tp[y] / tpfp[y]) if tpfp[y] else 0
+        rc = (tp[y] / tpfn[y]) if tpfn[y] else 0
         avg["macro_pr"] += pr
         avg["macro_rc"] += rc
         if not summary:

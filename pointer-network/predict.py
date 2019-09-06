@@ -14,7 +14,7 @@ def greedy_search(dec, dec_out, batch, eos, heatmap):
     for i in range(len(eos)):
         if eos[i]:
             continue
-        eos[i] = (y[i] == len(batch[i][1]))
+        eos[i] = (y[i] == len(batch[i][1]) or y[i] in batch[i][4])
         batch[i][4].append(y[i])
         batch[i][5] += p[i]
         heatmap[i].append([y[i]] + dec.attn.a[i].tolist())
@@ -22,7 +22,7 @@ def greedy_search(dec, dec_out, batch, eos, heatmap):
 
 def beam_search(dec, dec_out, batch, eos, heatmap, t):
     bp, by = dec_out[:len(eos)].topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
-    bp += Tensor([-10000 if b else a[5] for a, b in zip(batch, eos)]).unsqueeze(1) # update
+    bp += Tensor([-10000 if b else a[5] for a, b in zip(batch, eos)]).unsqueeze(1)
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
     by = by.view(-1, BEAM_SIZE ** 2)
     if t == 0: # remove non-first duplicate beams
@@ -51,7 +51,7 @@ def beam_search(dec, dec_out, batch, eos, heatmap, t):
             m1.append(heatmap[j + k])
         topk = sorted(zip(b1, m1), key = lambda x: -x[0][5])[:BEAM_SIZE]
         for k, (b1, m1) in enumerate(topk, j):
-            eos[k] = (b1[4][-1] == len(b1[1]))
+            eos[k] = (b1[4][-1] == len(b1[1]) or b1[4][-1] in b1[4][:-1])
             batch[k] = b1
             heatmap[k] = m1
             if VERBOSE >= 2:
