@@ -19,7 +19,7 @@ source_sequence \t target_sequence
 
 To prepare data:
 ```
-python prepare.py training_data
+python3 prepare.py training_data
 ```
 
 To train:
@@ -29,10 +29,10 @@ python3 train.py model vocab training_data.csv (validation_data) num_epoch
 
 To predict:
 ```
-python predict.py model.epochN vocab test_data
+python3 predict.py model.epochN vocab test_data
 ```
 
 To evaluate:
 ```
-python evaluate.py model.epochN vocab test_data
+python3 evaluate.py model.epochN vocab test_data
 ```
