@@ -3,9 +3,9 @@ from utils import *
 from evaluate import *
 
 def load_data():
-    data = []
     bx = [] # source sequence batch
     by = [] # target sequence batch
+    data = []
     vocab = load_vocab(sys.argv[2])
     print("loading %s..." % sys.argv[3])
     fo = open(sys.argv[3], "r")
