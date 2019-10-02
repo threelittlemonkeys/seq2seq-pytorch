@@ -3,35 +3,39 @@ from utils import *
 from evaluate import *
 
 def load_data():
-    bx = [] # source sequence batch
+    bxc = [] # source character sequence batch
+    bxw = [] # source word sequence batch
     by = [] # target sequence batch
     data = []
-    vocab = load_vocab(sys.argv[2])
-    print("loading %s..." % sys.argv[3])
-    fo = open(sys.argv[3], "r")
+    cti = load_tkn_to_idx(sys.argv[2])
+    wti = load_tkn_to_idx(sys.argv[3])
+    print("loading %s..." % sys.argv[4])
+    fo = open(sys.argv[4], "r")
     for line in fo:
         x, y = line.strip().split("\t")
-        x = [int(i) for i in x.split(" ")]
+        x = [i.split(":") for i in x.split(" ")]
         y = [int(i) for i in y.split(" ")]
-        # x.reverse() # reversing source sequence
-        bx.append(x)
+        xc, xw = zip(*[(list(map(int, xc.split("+"))), int(xw)) for xc, xw in x])
+        bxc.append(xc)
+        bxw.append(xw)
         by.append(y)
         if len(by) == BATCH_SIZE:
-            _, bx = batchify(None, bx, eos = True)
+            bxc, bxw = batchify(bxc, bxw, eos = True)
             _, by = batchify(None, by)
-            data.append((bx, by))
-            bx = []
+            data.append((bxc, bxw, by))
+            bxc = []
+            bxw = []
             by = []
     fo.close()
     print("data size: %d" % (len(data) * BATCH_SIZE))
     print("batch size: %d" % BATCH_SIZE)
-    return data, vocab
+    return data, cti, wti
 
 def train():
     print("cuda: %s" % CUDA)
     num_epochs = int(sys.argv[-1])
-    data, vocab = load_data()
-    model = ptrnet(len(vocab))
+    data, cti, wti = load_data()
+    model = ptrnet(len(cti), len(wti))
     enc_optim = torch.optim.Adam(model.enc.parameters(), lr = LEARNING_RATE)
     dec_optim = torch.optim.Adam(model.dec.parameters(), lr = LEARNING_RATE)
     print(model)
@@ -41,8 +45,8 @@ def train():
     for ei in range(epoch + 1, epoch + num_epochs + 1):
         loss_sum = 0
         timer = time()
-        for x, y in data:
-            loss = model(x, y) # forward pass and compute loss
+        for xc, xw, y in data:
+            loss = model(xc, xw, y) # forward pass and compute loss
             loss.backward() # compute gradients
             enc_optim.step() # update encoder parameters
             dec_optim.step() # update decoder parameters
@@ -54,12 +58,12 @@ def train():
         else:
             save_checkpoint(filename, model, ei, loss_sum, timer)
         if EVAL_EVERY and (ei % EVAL_EVERY == 0 or ei == epoch + num_epochs):
-            args = [model, vocab]
-            evaluate(predict(sys.argv[4], *args), True)
+            args = [model, cti, wti]
+            evaluate(predict(sys.argv[5], *args), True)
             model.train()
             print()
 
 if __name__ == "__main__":
-    if len(sys.argv) not in [5, 6]:
-        sys.exit("Usage: %s model vocab training_data (validation data) num_epoch" % sys.argv[0])
+    if len(sys.argv) not in [6, 7]:
+        sys.exit("Usage: %s model char_to_idx word_to_idx training_data (validation data) num_epoch" % sys.argv[0])
     train()

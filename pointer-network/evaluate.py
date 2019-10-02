@@ -7,7 +7,7 @@ def evaluate(result, summary = False):
     tpfp = defaultdict(int) # true positives + false positives
     for _, y0, y1 in result: # actual value, prediction
         for y in y0:
-            tp[y] += y in y1
+            tp[y] += (y in y1)
             tpfn[y] += 1
         for y in y1:
             tpfp[y] += 1
@@ -31,7 +31,7 @@ def evaluate(result, summary = False):
     print("micro f1 = %f" % avg["micro_f1"])
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        sys.exit("Usage: %s model vocab test_data" % sys.argv[0])
+    if len(sys.argv) != 5:
+        sys.exit("Usage: %s model char_to_idx word_to_idx test_data" % sys.argv[0])
     print("cuda: %s" % CUDA)
-    evaluate(predict(sys.argv[3], *load_model()))
+    evaluate(predict(sys.argv[4], *load_model()))

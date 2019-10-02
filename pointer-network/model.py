@@ -2,26 +2,28 @@ from utils import *
 from embedding import embed
 
 class ptrnet(nn.Module): # pointer networks
-    def __init__(self, vocab_size):
+    def __init__(self, char_vocab_size, word_vocab_size):
         super().__init__()
 
         # architecture
-        self.enc = encoder(vocab_size)
-        self.dec = decoder(vocab_size)
+        self.enc = encoder(char_vocab_size, word_vocab_size)
+        self.dec = decoder(char_vocab_size, word_vocab_size)
         self = self.cuda() if CUDA else self
 
-    def forward(self, x, y): # for training
+    def forward(self, xc, xw, y): # for training
         loss = 0
         self.zero_grad()
-        mask = maskset(x)
-        enc_out = self.enc(x, mask)
-        dec_in = LongTensor([SOS_IDX] * BATCH_SIZE)
+        mask = maskset(xw)
+        enc_out = self.enc(xc, xw, mask)
+        yc = LongTensor([[SOS_IDX]] * BATCH_SIZE)
+        yw = LongTensor([SOS_IDX] * BATCH_SIZE)
         self.dec.hidden = self.enc.hidden
         for t in range(y.size(1)):
-            dec_out = self.dec(dec_in.unsqueeze(1), enc_out, t, mask)
-            dec_in = y[:, t] - 1 # teacher forcing
-            loss += F.nll_loss(dec_out, dec_in, ignore_index = PAD_IDX - 1)
-            dec_in = LongTensor([x[i, j] for i, j in enumerate(dec_in)])
+            dec_out = self.dec(yc.unsqueeze(1), yw.unsqueeze(1), enc_out, t, mask)
+            yw = y[:, t] - 1 # teacher forcing
+            loss += F.nll_loss(dec_out, yw, ignore_index = PAD_IDX - 1)
+            yc = torch.cat([xc[i, j] for i, j in enumerate(yw)])
+            yw = torch.cat([xw[i, j].view(1) for i, j in enumerate(yw)])
         loss /= y.size(1) # divide by senquence length
         # loss /= y.gt(0).sum().float() # divide by the number of unpadded tokens
         return loss
@@ -30,13 +32,13 @@ class ptrnet(nn.Module): # pointer networks
         pass
 
 class encoder(nn.Module):
-    def __init__(self, vocab_size):
+    def __init__(self, char_vocab_size, word_vocab_size):
         super().__init__()
 
         # architecture
-        self.embed = embed(-1, vocab_size)
+        self.embed = embed(char_vocab_size, word_vocab_size)
         self.rnn = getattr(nn, RNN_TYPE)(
-            input_size = sum(EMBED.values()),
+            input_size = EMBED_SIZE,
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -53,22 +55,22 @@ class encoder(nn.Module):
             return (hs, cs)
         return hs
 
-    def forward(self, x, mask):
+    def forward(self, xc, xw, mask):
         self.hidden = self.init_state()
-        x = self.embed(None, x)
+        x = self.embed(xc, xw)
         x = nn.utils.rnn.pack_padded_sequence(x, mask[1], batch_first = True)
         h, _ = self.rnn(x, self.hidden)
         h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first = True)
         return h
 
 class decoder(nn.Module):
-    def __init__(self, vocab_size):
+    def __init__(self, char_vocab_size, word_vocab_size):
         super().__init__()
 
         # architecture
-        self.embed = embed(-1, vocab_size)
+        self.embed = embed(char_vocab_size, word_vocab_size)
         self.rnn = getattr(nn, RNN_TYPE)(
-            input_size = sum(EMBED.values()),
+            input_size = EMBED_SIZE,
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -79,8 +81,8 @@ class decoder(nn.Module):
         self.attn = attn()
         self.softmax = nn.LogSoftmax(1)
 
-    def forward(self, dec_in, enc_out, t, mask):
-        x = self.embed(None, dec_in)
+    def forward(self, xc, xw, enc_out, t, mask):
+        x = self.embed(xc, xw)
         h, _ = self.rnn(x, self.hidden)
         h = self.attn(h, enc_out, t, mask[0])
         y = self.softmax(h)
