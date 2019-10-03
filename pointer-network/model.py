@@ -22,7 +22,7 @@ class ptrnet(nn.Module): # pointer networks
             dec_out = self.dec(yc.unsqueeze(1), yw.unsqueeze(1), enc_out, t, mask)
             yw = y[:, t] - 1 # teacher forcing
             loss += F.nll_loss(dec_out, yw, ignore_index = PAD_IDX - 1)
-            yc = torch.cat([xc[i, j] for i, j in enumerate(yw)])
+            yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).view(BATCH_SIZE, -1)
             yw = torch.cat([xw[i, j].view(1) for i, j in enumerate(yw)])
         loss /= y.size(1) # divide by senquence length
         # loss /= y.gt(0).sum().float() # divide by the number of unpadded tokens
