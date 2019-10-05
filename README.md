@@ -59,6 +59,8 @@ Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N
 
 Oriol Vinyals, Meire Fortunato, Navdeep Jaitly. 2015. [Pointer Networks.](https://arxiv.org/abs/1506.03134) In NIPS.
 
+Oriol Vinyals, Samy Bengio, Manjunath Kudlur. 2015. [Order Matters: Sequence to sequence for sets.](https://arxiv.org/abs/1511.06391) In ICLR.
+
 Sean Welleck, Ilia Kulikov, Stephen Roller, Emily Dinan, Kyunghyun Cho, Jason Weston. 2019. [Neural Text Generation with Unlikelihood Training.](https://arxiv.org/abs/1908.04319) arXiv:1908.04319.
 
 Sam Wiseman, Alexander M. Rush. [Sequence-to-Sequence Learning as Beam-Search Optimization.](https://arxiv.org/abs/1606.02960) arXiv:1606.02960.
