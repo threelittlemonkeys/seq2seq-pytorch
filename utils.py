@@ -13,11 +13,12 @@ def normalize(x):
     x = x.lower()
     return x
 
-def tokenize(x, unit):
-    x = normalize(x)
-    if unit == "char":
-        return list(x)
-    if unit == "word":
+def tokenize(x, norm = True):
+    if norm:
+        x = normalize(x)
+    if UNIT == "char":
+        return re.sub(" ", "", x)
+    if UNIT in ("word", "sent"):
         return x.split(" ")
 
 def save_data(filename, data):
@@ -25,16 +26,6 @@ def save_data(filename, data):
     for seq in data:
         fo.write(" ".join(seq[0]) + "\t" + " ".join(seq[1]) + "\n")
     fo.close()
-
-def load_idx_to_tkn(filename):
-    print("loading %s" % filename)
-    idx_to_tkn = []
-    fo = open(filename)
-    for line in fo:
-        line = line[:-1]
-        idx_to_tkn.append(line)
-    fo.close()
-    return idx_to_tkn
 
 def load_tkn_to_idx(filename):
     print("loading %s" % filename)
@@ -46,30 +37,24 @@ def load_tkn_to_idx(filename):
     fo.close()
     return tkn_to_idx
 
+def load_idx_to_tkn(filename):
+    print("loading %s" % filename)
+    idx_to_tkn = []
+    fo = open(filename)
+    for line in fo:
+        line = line[:-1]
+        idx_to_tkn.append(line)
+    fo.close()
+    return idx_to_tkn
+
 def save_tkn_to_idx(filename, tkn_to_idx):
     fo = open(filename, "w")
     for tkn, _ in sorted(tkn_to_idx.items(), key = lambda x: x[1]):
         fo.write("%s\n" % tkn)
     fo.close()
 
-def load_vocab(filename):
-    print("loading %s..." % filename)
-    vocab = {}
-    fo = open(filename)
-    for line in fo:
-        line = line[:-1]
-        vocab[line] = len(vocab)
-    fo.close()
-    return vocab
-
-def save_vocab(filename, vocab):
-    fo = open(filename, "w")
-    for w, _ in sorted(vocab.items(), key = lambda x: x[1]):
-        fo.write("%s\n" % w)
-    fo.close()
-
 def load_checkpoint(filename, model = None):
-    print("loading model...")
+    print("loading %s" % filename)
     checkpoint = torch.load(filename)
     if model:
         model.enc.load_state_dict(checkpoint["encoder_state_dict"])
@@ -97,6 +82,84 @@ def cudify(f):
 Tensor = cudify(torch.Tensor)
 LongTensor = cudify(torch.LongTensor)
 zeros = cudify(torch.zeros)
+
+class dataset():
+    def __init__(self):
+        self.idx = []
+        self.x = [[]] # input sequences
+        self.xc = [[]] # input character sequences
+        self.xw = [[]] # input word sequences
+        self.y0 = [[]] if HRE else [] # actual labels
+        self.y1 = [] # predicted labels
+
+    def append_item(self, idx = -1, x = None, xc = None, xw = None, y0 = None, y1 = None):
+        if idx >= 0 : self.idx.append(idx)
+        if x: self.x[-1].append(x)
+        if xc: self.xc[-1].append(xc)
+        if xw: self.xw[-1].append(xw)
+        if y0: (self.y0[-1] if HRE else self.y0).append(y0)
+        if y1: self.y1.extend(y1)
+
+    def append_list(self):
+        self.x.append([])
+        self.xc.append([])
+        self.xw.append([])
+        if HRE: self.y0.append([])
+
+    def strip(self):
+        while len(self.xw[-1]) == 0:
+            self.x.pop()
+            self.xc.pop()
+            self.xw.pop()
+            if HRE: self.y0.pop()
+
+    def sort(self):
+        self.idx = list(range(len(self.x)))
+        self.idx.sort(key = lambda x: -len(self.xw[x] if HRE else self.xw[x][0]))
+        self.xc = [self.xc[i] for i in self.idx]
+        self.xw = [self.xw[i] for i in self.idx]
+
+    def unsort(self):
+        idx = sorted(range(len(self.idx)), key = lambda x: self.idx[x])
+        self.idx = list(range(len(self.x)))
+        self.xc = [self.xc[i] for i in idx]
+        self.xw = [self.xw[i] for i in idx]
+        self.y1 = [self.y1[i] for i in idx]
+
+    def split(self): # split into batches
+        for i in range(0, len(self.y0), BATCH_SIZE):
+            j = i + BATCH_SIZE
+            y0 = self.y0[i:j]
+            y0_lens = [len(x) for x in self.xw[i:j]] if HRE else None
+            if HRE:
+                xc = [list(x) for x in self.xc[i:j] for x in x]
+                xw = [list(x) for x in self.xw[i:j] for x in x]
+            else:
+                xc = [list(*x) for x in self.xc[i:j]]
+                xw = [list(*x) for x in self.xw[i:j]]
+            yield xc, xw, y0, y0_lens
+
+    def tensor(self, bc, bw, _sos = False, _eos = False, doc_lens = None):
+        sos, eos, pad = [SOS_IDX], [EOS_IDX], [PAD_IDX]
+        if doc_lens:
+            d_len = max(doc_lens) # doc_len (Ld)
+            i, _bc, _bw = 0, [], []
+            for j in doc_lens:
+                _bc.extend(bc[i:i + j] + [[pad]] * (d_len - j))
+                _bw.extend(bw[i:i + j] + [pad] * (d_len - j))
+                i += j
+            bc, bw = _bc, _bw
+        if bw:
+            s_len = max(map(len, bw)) # sent_len (Ls)
+            bw = [sos * _sos + x + eos * _eos + pad * (s_len - len(x)) for x in bw]
+            bw = LongTensor(bw) # [B * Ld, Ls]
+        if bc:
+            w_len = max(max(map(len, x)) for x in bc) # word_len (Lw)
+            w_pad = [pad * (w_len + 2)]
+            bc = [[sos + w + eos + pad * (w_len - len(w)) for w in x] for x in bc]
+            bc = [w_pad * _sos + x + w_pad * (s_len - len(x) + _eos) for x in bc]
+            bc = LongTensor(bc) # [B * Ld, Ls, Lw]
+        return bc, bw
 
 def batchify(bxc, bxw, sos = False, eos = False, minlen = 0):
     bxw_len = max(minlen, max(len(x) for x in bxw))
