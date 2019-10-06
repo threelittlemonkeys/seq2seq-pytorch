@@ -176,7 +176,7 @@ def batchify(bxc, bxw, sos = False, eos = False, minlen = 0):
 
 def maskset(x):
     mask = x.eq(PAD_IDX)
-    return (mask, x.size(1) - mask.sum(1)) # set of mask and lengths
+    return (mask, x.size(1) - mask.sum(1)) # tuple of mask and lengths
 
 def mat2csv(m, ch = True, rh = False, nd = 4, delim ="\t"):
     f = "%%.%df" % nd

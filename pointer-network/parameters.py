@@ -10,6 +10,7 @@ RNN_TYPE = "LSTM" # LSTM or GRU
 NUM_DIRS = 2 # unidirectional: 1, bidirectional: 2
 NUM_LAYERS = 2
 BATCH_SIZE = 64 * 3 # BATCH_SIZE * BEAM_SIZE
+HRE = (UNIT == "sent") # hierarchical recurrent encoding
 EMBED = {"lookup": 300} # embeddings (char-cnn, char-rnn, lookup, sae)
 EMBED_SIZE = sum(EMBED.values())
 HIDDEN_SIZE = 1000
