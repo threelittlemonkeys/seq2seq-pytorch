@@ -3,38 +3,36 @@ from utils import *
 from evaluate import *
 
 def load_data():
-    bxc = [] # source character sequence batch
-    bxw = [] # source word sequence batch
-    by = [] # target sequence batch
-    data = []
-    cti = load_tkn_to_idx(sys.argv[2])
-    wti = load_tkn_to_idx(sys.argv[3])
+    data = dataset()
+    batch = []
+    cti = load_tkn_to_idx(sys.argv[2]) # char_to_idx
+    wti = load_tkn_to_idx(sys.argv[3]) # word_to_idx
     print("loading %s..." % sys.argv[4])
     fo = open(sys.argv[4], "r")
     for line in fo:
-        x, y = line.strip().split("\t")
-        x = [i.split(":") for i in x.split(" ")]
-        y = [int(i) for i in y.split(" ")]
-        xc, xw = zip(*[(list(map(int, xc.split("+"))), int(xw)) for xc, xw in x])
-        bxc.append(xc)
-        bxw.append(xw)
-        by.append(y)
-        if len(by) == BATCH_SIZE:
-            bxc, bxw = batchify(bxc, bxw, eos = True)
-            _, by = batchify(None, by)
-            data.append((bxc, bxw, by))
-            bxc = []
-            bxw = []
-            by = []
+        line = line.strip()
+        if line:
+            x, y = line.split("\t")
+            x = [x.split(":") for x in x.split(" ")]
+            y = [int(i) for i in y.split(" ")]
+            xc, xw = zip(*[(list(map(int, xc.split("+"))), int(xw)) for xc, xw in x])
+            data.append_item(xc = xc, xw = xw, y0 = y)
+        if not (HRE and line): # delimiters (\n, \n\n)
+            data.append_list()
+    data.strip()
+    for xc, xw, y0, y0_lens in data.split():
+         xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
+         _, y0 = data.tensor(None, y0)
+         batch.append((xc, xw, y0))
     fo.close()
-    print("data size: %d" % (len(data) * BATCH_SIZE))
+    print("data size: %d" % (len(batch) * BATCH_SIZE))
     print("batch size: %d" % BATCH_SIZE)
-    return data, cti, wti
+    return batch, cti, wti
 
 def train():
     print("cuda: %s" % CUDA)
     num_epochs = int(sys.argv[-1])
-    data, cti, wti = load_data()
+    batch, cti, wti = load_data()
     model = ptrnet(len(cti), len(wti))
     enc_optim = torch.optim.Adam(model.enc.parameters(), lr = LEARNING_RATE)
     dec_optim = torch.optim.Adam(model.dec.parameters(), lr = LEARNING_RATE)
@@ -45,8 +43,8 @@ def train():
     for ei in range(epoch + 1, epoch + num_epochs + 1):
         loss_sum = 0
         timer = time()
-        for xc, xw, y in data:
-            loss = model(xc, xw, y) # forward pass and compute loss
+        for xc, xw, y0 in batch:
+            loss = model(xc, xw, y0) # forward pass and compute loss
             loss.backward() # compute gradients
             enc_optim.step() # update encoder parameters
             dec_optim.step() # update decoder parameters
@@ -66,4 +64,6 @@ def train():
 if __name__ == "__main__":
     if len(sys.argv) not in [6, 7]:
         sys.exit("Usage: %s model char_to_idx word_to_idx training_data (validation data) num_epoch" % sys.argv[0])
+    if len(sys.argv) == 6:
+        EVAL_EVERY = False
     train()

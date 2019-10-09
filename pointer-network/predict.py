@@ -23,7 +23,7 @@ def greedy_search(dec, dec_out, batch, eos, heatmap):
 
 def beam_search(dec, dec_out, batch, eos, heatmap, t):
     bp, by = dec_out[:len(eos)].topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
-    bp += Tensor([-10000 if b else a[6] for a, b in zip(batch, eos)]).unsqueeze(1)
+    bp += Tensor([-10000 if b else a[6] for a, b in zip(batch, eos)]).unsqueeze(1) # update
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
     by = by.view(-1, BEAM_SIZE ** 2)
     if t == 0: # remove non-first duplicate beams

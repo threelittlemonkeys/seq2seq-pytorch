@@ -13,7 +13,11 @@ class ptrnet(nn.Module): # pointer networks
     def forward(self, xc, xw, y): # for training
         loss = 0
         self.zero_grad()
-        mask = maskset(xw)
+        # mask = (y0[:, 1:].gt(SOS_IDX) if HRE else xw.gt(PAD_IDX)).float()
+        print(y.size())
+        print(xw.size())
+        exit()
+        mask = None if HRE else maskset(xw)
         enc_out = self.enc(xc, xw, mask)
         yc = LongTensor([[SOS_IDX]] * BATCH_SIZE)
         yw = LongTensor([SOS_IDX] * BATCH_SIZE)
