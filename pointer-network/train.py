@@ -50,7 +50,7 @@ def train():
             dec_optim.step() # update decoder parameters
             loss_sum += loss.item()
         timer = time() - timer
-        loss_sum /= len(data)
+        loss_sum /= len(batch)
         if ei % SAVE_EVERY and ei != epoch + num_epochs:
             save_checkpoint("", None, ei, loss_sum, timer)
         else:

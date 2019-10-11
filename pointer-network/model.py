@@ -10,26 +10,25 @@ class ptrnet(nn.Module): # pointer networks
         self.dec = decoder(char_vocab_size, word_vocab_size)
         self = self.cuda() if CUDA else self
 
-    def forward(self, xc, xw, y): # for training
+    def forward(self, xc, xw, y0): # for training
         loss = 0
         self.zero_grad()
-        # mask = (y0[:, 1:].gt(SOS_IDX) if HRE else xw.gt(PAD_IDX)).float()
-        print(y.size())
-        print(xw.size())
-        exit()
-        mask = None if HRE else maskset(xw)
+        batch_size = y0.size(0)
+        self.enc.batch_size = batch_size
+        self.dec.batch_size = batch_size
+        mask = None if HRE else maskset(xw) # TODO
         enc_out = self.enc(xc, xw, mask)
-        yc = LongTensor([[SOS_IDX]] * BATCH_SIZE)
-        yw = LongTensor([SOS_IDX] * BATCH_SIZE)
+        yc = LongTensor([[SOS_IDX]] * batch_size)
+        yw = LongTensor([SOS_IDX] * batch_size)
         self.dec.hidden = self.enc.hidden
-        for t in range(y.size(1)):
+        for t in range(y0.size(1)):
             dec_out = self.dec(yc.unsqueeze(1), yw.unsqueeze(1), enc_out, t, mask)
-            yw = y[:, t] - 1 # teacher forcing
+            yw = y0[:, t] - 1 # teacher forcing
             loss += F.nll_loss(dec_out, yw, ignore_index = PAD_IDX - 1)
-            yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).view(BATCH_SIZE, -1)
+            yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).view(batch_size, -1)
             yw = torch.cat([xw[i, j].view(1) for i, j in enumerate(yw)])
-        loss /= y.size(1) # divide by senquence length
-        # loss /= y.gt(0).sum().float() # divide by the number of unpadded tokens
+        loss /= y0.size(1) # divide by senquence length
+        # loss /= y0.gt(0).sum().float() # divide by the number of unpadded tokens
         return loss
 
     def decode(self, x): # for inference
@@ -38,9 +37,11 @@ class ptrnet(nn.Module): # pointer networks
 class encoder(nn.Module):
     def __init__(self, char_vocab_size, word_vocab_size):
         super().__init__()
+        self.batch_size = 0
+        self.hidden = None # hidden state
 
         # architecture
-        self.embed = embed(char_vocab_size, word_vocab_size)
+        self.embed = embed(char_vocab_size, word_vocab_size, HRE)
         self.rnn = getattr(nn, RNN_TYPE)(
             input_size = EMBED_SIZE,
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
@@ -51,16 +52,17 @@ class encoder(nn.Module):
             bidirectional = (NUM_DIRS == 2)
         )
 
-    def init_state(self): # initialize RNN states
-        args = (NUM_LAYERS * NUM_DIRS, BATCH_SIZE, HIDDEN_SIZE // NUM_DIRS)
-        hs = zeros(*args) # hidden state
+    def init_state(self, b): # initialize RNN states
+        n = NUM_LAYERS * NUM_DIRS
+        h = HIDDEN_SIZE // NUM_DIRS
+        hs = zeros(n, b, h) # hidden state
         if RNN_TYPE == "LSTM":
-            cs = zeros(*args) # LSTM cell state
+            cs = zeros(n, b, h) # LSTM cell state
             return (hs, cs)
         return hs
 
     def forward(self, xc, xw, mask):
-        self.hidden = self.init_state()
+        self.hidden = self.init_state(self.batch_size)
         x = self.embed(xc, xw)
         x = nn.utils.rnn.pack_padded_sequence(x, mask[1], batch_first = True)
         h, _ = self.rnn(x, self.hidden)
@@ -70,6 +72,8 @@ class encoder(nn.Module):
 class decoder(nn.Module):
     def __init__(self, char_vocab_size, word_vocab_size):
         super().__init__()
+        self.batch_size = 0
+        self.hidden = None # hidden state
 
         # architecture
         self.embed = embed(char_vocab_size, word_vocab_size)
