@@ -57,20 +57,20 @@ def load_checkpoint(filename, model = None):
     print("loading %s" % filename)
     checkpoint = torch.load(filename)
     if model:
-        model.enc.load_state_dict(checkpoint["encoder_state_dict"])
-        model.dec.load_state_dict(checkpoint["decoder_state_dict"])
+        model.enc.load_state_dict(checkpoint["enc_state_dict"])
+        model.dec.load_state_dict(checkpoint["dec_state_dict"])
     epoch = checkpoint["epoch"]
     loss = checkpoint["loss"]
-    print("saved model: epoch = %d, loss = %f\n" % (checkpoint["epoch"], checkpoint["loss"]))
+    print("saved model: epoch = %d, loss = %f" % (checkpoint["epoch"], checkpoint["loss"]))
     return epoch
 
 def save_checkpoint(filename, model, epoch, loss, time):
     print("epoch = %d, loss = %f, time = %f" % (epoch, loss, time))
     if filename and model:
-        print("saving model...")
+        print("saving %s" % filename)
         checkpoint = {}
-        checkpoint["encoder_state_dict"] = model.enc.state_dict()
-        checkpoint["decoder_state_dict"] = model.dec.state_dict()
+        checkpoint["enc_state_dict"] = model.enc.state_dict()
+        checkpoint["dec_state_dict"] = model.dec.state_dict()
         checkpoint["epoch"] = epoch
         checkpoint["loss"] = loss
         torch.save(checkpoint, filename + ".epoch%d" % epoch)
