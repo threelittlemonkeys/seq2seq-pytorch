@@ -31,7 +31,7 @@ class ptrnet(nn.Module): # pointer networks
         # loss /= y0.gt(0).sum().float() # divide by the number of unpadded tokens
         return loss
 
-    def decode(self, x): # for inference
+    def decode(self, xc, xw): # for inference
         pass
 
 class encoder(nn.Module):
@@ -67,6 +67,7 @@ class encoder(nn.Module):
         x = nn.utils.rnn.pack_padded_sequence(x, mask[1], batch_first = True)
         h, _ = self.rnn(x, self.hidden)
         h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first = True)
+        # TODO
         return h
 
 class decoder(nn.Module):

@@ -19,7 +19,7 @@ def greedy_search(dec, dec_out, batch, eos, heatmap):
         batch[i][5].append(y[i])
         batch[i][6] += p[i]
         heatmap[i].append([y[i]] + dec.attn.a[i].tolist())
-    return yw 
+    return yw
 
 def beam_search(dec, dec_out, batch, eos, heatmap, t):
     bp, by = dec_out[:len(eos)].topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
@@ -62,15 +62,18 @@ def beam_search(dec, dec_out, batch, eos, heatmap, t):
             print()
     return LongTensor([next(reversed(x[5]), SOS_IDX) for x in batch]).unsqueeze(1)
 
-def run_model(model, batch):
-    t = 0
-    eos = [False for _ in batch] # number of completed sequences in the batch
-    while len(batch) < BATCH_SIZE:
-        batch.append([-1, [], [[EOS_IDX]], [EOS_IDX], [], [], 0])
-    batch.sort(key = lambda x: -len(x[3]))
-    xc, xw = batchify(*zip(*[(x[2], x[3]) for x in batch]), eos = True)
-    mask = maskset(xw)
-    enc_out = model.enc(xc, xw, mask)
+def run_model(model, data):
+    data.sort()
+    for xc, xw, _, y0_lens in data.split():
+        xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
+
+        # TODO
+        t = 0
+        eos = [False for _ in xw] # number of completed sequences in the batch
+        mask = maskset(xw)
+        enc_out = model.enc(xc, xw, mask)
+        exit()
+
     yc = LongTensor([[SOS_IDX]] * BATCH_SIZE)
     yw = LongTensor([SOS_IDX] * BATCH_SIZE).unsqueeze(1)
     model.dec.hidden = model.enc.hidden
@@ -95,27 +98,27 @@ def run_model(model, batch):
     return [(x[1], x[4], x[5][:-1]) for x in batch]
 
 def predict(filename, model, cti, wti):
-    data = []
-    result = []
+    data = dataset()
     fo = open(filename)
     for idx, line in enumerate(fo):
         line = line.strip()
-        if re.match("[^\t]+\t[0-9]+( [0-9]+)*$", line):
-            line, y = line.split("\t")
-            y = [int(x) for x in y.split(" ")]
-        else: # no ground truth provided
-            y = []
-        x = tokenize(line, UNIT)
-        xc = [[cti[c] if c in cti else UNK_IDX for c in w] for w in x]
-        xw = [wti[w] if w in wti else UNK_IDX for w in x]
-        data.extend([[idx, x, xc, xw, y, [], Tensor([0])] for _ in range(BEAM_SIZE)])
+        if line:
+            if re.match("[^\t]+\t[0-9]+( [0-9]+)*$", line):
+                line, y = line.split("\t")
+                y = [int(x) for x in y.split(" ")]
+            else: # no ground truth provided
+                y = []
+            x = tokenize(line)
+            xc = [[cti[c] if c in cti else UNK_IDX for c in w] for w in x]
+            xw = [wti[w] if w in wti else UNK_IDX for w in x]
+            data.append_item(x = line, xc = xc, xw = xw, y0 = y)
+        if not (HRE and line): # delimiters (\n, \n\n)
+            data.append_row()
     fo.close()
+    data.strip()
     with torch.no_grad():
         model.eval()
-        for i in range(0, len(data), BATCH_SIZE):
-            batch = data[i:i + BATCH_SIZE]
-            for y in run_model(model, batch):
-                yield y
+        return run_model(model, data)
 
 if __name__ == "__main__":
     if len(sys.argv) != 5:
