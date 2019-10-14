@@ -11,22 +11,20 @@ class ptrnet(nn.Module): # pointer networks
         self = self.cuda() if CUDA else self
 
     def forward(self, xc, xw, y0): # for training
+        b = y0.size(0) # batch size
         loss = 0
         self.zero_grad()
-        batch_size = y0.size(0)
-        self.enc.batch_size = batch_size
-        self.dec.batch_size = batch_size
         mask = None if HRE else maskset(xw) # TODO
-        enc_out = self.enc(xc, xw, mask)
-        yc = LongTensor([[SOS_IDX]] * batch_size)
-        yw = LongTensor([SOS_IDX] * batch_size)
+        enc_out = self.enc(b, xc, xw, mask)
+        yc = LongTensor([[[SOS_IDX]]] * b)
+        yw = LongTensor([[SOS_IDX]] * b)
         self.dec.hidden = self.enc.hidden
         for t in range(y0.size(1)):
-            dec_out = self.dec(yc.unsqueeze(1), yw.unsqueeze(1), enc_out, t, mask)
+            dec_out = self.dec(yc, yw, enc_out, t, mask)
             yw = y0[:, t] - 1 # teacher forcing
             loss += F.nll_loss(dec_out, yw, ignore_index = PAD_IDX - 1)
-            yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).view(batch_size, -1)
-            yw = torch.cat([xw[i, j].view(1) for i, j in enumerate(yw)])
+            yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).view(b, 1, -1)
+            yw = torch.cat([xw[i, j].view(1, 1) for i, j in enumerate(yw)])
         loss /= y0.size(1) # divide by senquence length
         # loss /= y0.gt(0).sum().float() # divide by the number of unpadded tokens
         return loss
@@ -37,7 +35,6 @@ class ptrnet(nn.Module): # pointer networks
 class encoder(nn.Module):
     def __init__(self, char_vocab_size, word_vocab_size):
         super().__init__()
-        self.batch_size = 0
         self.hidden = None # hidden state
 
         # architecture
@@ -61,8 +58,8 @@ class encoder(nn.Module):
             return (hs, cs)
         return hs
 
-    def forward(self, xc, xw, mask):
-        self.hidden = self.init_state(self.batch_size)
+    def forward(self, b, xc, xw, mask):
+        self.hidden = self.init_state(b)
         x = self.embed(xc, xw)
         x = nn.utils.rnn.pack_padded_sequence(x, mask[1], batch_first = True)
         h, _ = self.rnn(x, self.hidden)
@@ -73,7 +70,6 @@ class encoder(nn.Module):
 class decoder(nn.Module):
     def __init__(self, char_vocab_size, word_vocab_size):
         super().__init__()
-        self.batch_size = 0
         self.hidden = None # hidden state
 
         # architecture

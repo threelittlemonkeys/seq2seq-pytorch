@@ -112,6 +112,8 @@ def predict(filename, model, cti, wti):
             xc = [[cti[c] if c in cti else UNK_IDX for c in w] for w in x]
             xw = [wti[w] if w in wti else UNK_IDX for w in x]
             data.append_item(x = line, xc = xc, xw = xw, y0 = y)
+            # TODO
+            # data.extend([[idx, x, xc, xw, y, [], Tensor([0])] for _ in range(BEAM_SIZE)])
         if not (HRE and line): # delimiters (\n, \n\n)
             data.append_row()
     fo.close()
