@@ -65,12 +65,15 @@ def beam_search(dec, dec_out, batch, eos, heatmap, t):
 def run_model(model, data):
     data.sort()
     for xc, xw, _, y0_lens in data.split():
+        # batch size
         xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
+        print(xw.size())
+        exit()
 
         # TODO
         t = 0
         eos = [False for _ in xw] # number of completed sequences in the batch
-        mask = maskset(xw)
+        mask = None if HRE else maskset(xw) # TODO
         enc_out = model.enc(xc, xw, mask)
         exit()
 
@@ -111,9 +114,10 @@ def predict(filename, model, cti, wti):
             x = tokenize(line)
             xc = [[cti[c] if c in cti else UNK_IDX for c in w] for w in x]
             xw = [wti[w] if w in wti else UNK_IDX for w in x]
-            data.append_item(x = line, xc = xc, xw = xw, y0 = y)
             # TODO
-            # data.extend([[idx, x, xc, xw, y, [], Tensor([0])] for _ in range(BEAM_SIZE)])
+            for _ in range(BEAM_SIZE):
+                data.append_item(idx = idx, x = line, xc = xc, xw = xw, y0 = y)
+                # append_row TODO
         if not (HRE and line): # delimiters (\n, \n\n)
             data.append_row()
     fo.close()
