@@ -33,5 +33,4 @@ def evaluate(result, summary = False):
 if __name__ == "__main__":
     if len(sys.argv) != 5:
         sys.exit("Usage: %s model char_to_idx word_to_idx test_data" % sys.argv[0])
-    print("cuda: %s" % CUDA)
     evaluate(predict(sys.argv[4], *load_model()))

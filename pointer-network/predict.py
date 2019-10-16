@@ -68,7 +68,6 @@ def run_model(model, data):
         # batch size
         xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
         print(xw.size())
-        exit()
 
         # TODO
         t = 0
@@ -114,10 +113,7 @@ def predict(filename, model, cti, wti):
             x = tokenize(line)
             xc = [[cti[c] if c in cti else UNK_IDX for c in w] for w in x]
             xw = [wti[w] if w in wti else UNK_IDX for w in x]
-            # TODO
-            for _ in range(BEAM_SIZE):
-                data.append_item(idx = idx, x = line, xc = xc, xw = xw, y0 = y)
-                # append_row TODO
+            data.append_item(idx = idx, x = line, xc = xc, xw = xw, y0 = y)
         if not (HRE and line): # delimiters (\n, \n\n)
             data.append_row()
     fo.close()
@@ -129,7 +125,6 @@ def predict(filename, model, cti, wti):
 if __name__ == "__main__":
     if len(sys.argv) != 5:
         sys.exit("Usage: %s model char_to_idx word_to_idx test_data" % sys.argv[0])
-    print("cuda: %s" % CUDA)
     result = predict(sys.argv[4], *load_model())
     for x, y0, y1 in result:
         print((x, y0, y1) if y0 else (x, y1))

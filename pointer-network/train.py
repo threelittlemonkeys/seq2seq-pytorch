@@ -30,7 +30,6 @@ def load_data():
     return batch, cti, wti
 
 def train():
-    print("cuda: %s" % CUDA)
     num_epochs = int(sys.argv[-1])
     batch, cti, wti = load_data()
     model = ptrnet(len(cti), len(wti))
