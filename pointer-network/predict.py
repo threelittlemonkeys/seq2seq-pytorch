@@ -67,7 +67,7 @@ def run_model(model, data):
     for xc, xw, _, y0_lens in data.split():
         # batch size
         xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
-        print(xw.size())
+        exit()
 
         # TODO
         t = 0
@@ -115,6 +115,9 @@ def predict(filename, model, cti, wti):
             xw = [wti[w] if w in wti else UNK_IDX for w in x]
             data.append_item(idx = idx, x = line, xc = xc, xw = xw, y0 = y)
         if not (HRE and line): # delimiters (\n, \n\n)
+            for _ in range(BEAM_SIZE - 1):
+                data.append_row()
+                data.append_item(idx = idx, x = line, xc = xc, xw = xw, y0 = y)
             data.append_row()
     fo.close()
     data.strip()
