@@ -9,24 +9,24 @@ def load_model():
     load_checkpoint(sys.argv[1], model)
     return model, cti, wti
 
-def greedy_search(dec, dec_out, batch, eos, heatmap):
-    p, yw = dec_out.topk(1)
+def greedy_search(dec, y1, p1, eos, heatmap):
+    p, yw = dec.dec_out.topk(1)
     y = yw.view(-1).tolist()
     for i in range(len(eos)):
         if eos[i]:
             continue
-        eos[i] = (y[i] == len(batch[i][1]) or y[i] in batch[i][5])
-        batch[i][5].append(y[i])
-        batch[i][6] += p[i]
+        eos[i] = (y[i] == dec.enc_out.size(1) or y[i] in y1[i])
+        y1[i].append(y[i])
+        p1[i] += p[i]
         heatmap[i].append([y[i]] + dec.attn.a[i].tolist())
     return yw
 
-def beam_search(dec, dec_out, batch, eos, heatmap, t):
+def beam_search(dec, data, eos, heatmap): # TODO
     bp, by = dec_out[:len(eos)].topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
     bp += Tensor([-10000 if b else a[6] for a, b in zip(batch, eos)]).unsqueeze(1) # update
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
     by = by.view(-1, BEAM_SIZE ** 2)
-    if t == 0: # remove non-first duplicate beams
+    if t == 0: # remove non-first duplicate beams # TODO
         bp = bp[:, :BEAM_SIZE]
         by = by[:, :BEAM_SIZE]
     for i, (p, y) in enumerate(zip(bp, by)): # for each sequence
@@ -64,37 +64,34 @@ def beam_search(dec, dec_out, batch, eos, heatmap, t):
 
 def run_model(model, data):
     data.sort()
-    for xc, xw, _, y0_lens in data.split():
-        b = len(xw) # batch size
-        t = 0 # timestep
-        eos = [False] * b # number of completed sequences in the batch
+    for x0, x1, xc, xw, y0, y0_lens in data.split():
+        b, t, eos = len(x0), 0, [False] * len(x0) # batch size, time step, EOS states
         xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
         mask = None if HRE else maskset(xw) # TODO
-        enc_out = model.enc(b, xc, xw, mask)
-        yc = LongTensor([[SOS_IDX]] * b)
-        yw = LongTensor([SOS_IDX] * b).unsqueeze(1)
+        model.dec.enc_out = model.enc(b, xc, xw, mask)
         model.dec.hidden = model.enc.hidden
-        # TODO
-        heatmap = [[[""] + x[2] + [EOS]] for x in batch[:len(eos)]]
+        y1, p1 = [[]] * b, [0] * b
+        yc = LongTensor([[[SOS_IDX]]] * b)
+        yw = LongTensor([[SOS_IDX]] * b)
+        heatmap = [["", *x, EOS] for x in x1]
+        while sum(eos) < len(eos) and t < MAX_LEN:
+            model.dec.dec_out = model.dec(yc, yw, mask)
+            args = (model.dec, y1, p1, eos, heatmap)
+            yw = greedy_search(*args) if BEAM_SIZE == 1 else beam_search(*args)
+            yc = torch.cat([xc[i, j] for i, j in enumerate(yw)])
+            t += 1
+        print(y1)
+        print(p1)
         exit()
-
-    while sum(eos) < len(eos) and t < MAX_LEN:
-        dec_out = model.dec(yc.unsqueeze(1), yw, enc_out, t, mask)
-        if BEAM_SIZE == 1:
-            yw = greedy_search(model.dec, dec_out, batch, eos, heatmap)
-        else:
-            yw = beam_search(model.dec, dec_out, batch, eos, heatmap, t)
-        yc = torch.cat([xc[i, j] for i, j in enumerate(yw)])
-        t += 1
-    batch, heatmap = zip(*sorted(zip(batch, heatmap), key = lambda x: (x[0][0], -x[0][6])))
-    if VERBOSE >= 1:
-        for i in range(len(heatmap)):
-            if VERBOSE < 2 and i % BEAM_SIZE:
-                continue
-            print("heatmap[%d] =" % i)
-            print(heatmap[i])
-            print(mat2csv(heatmap[i], rh = True))
-    batch = [x for i, x in enumerate(batch) if not i % BEAM_SIZE]
+        batch, heatmap = zip(*sorted(zip(batch, heatmap), key = lambda x: (x[0][0], -x[0][6])))
+        if VERBOSE >= 1:
+            for i in range(len(heatmap)):
+                if VERBOSE < 2 and i % BEAM_SIZE:
+                    continue
+                print("heatmap[%d] =" % i)
+                print(heatmap[i])
+                print(mat2csv(heatmap[i], rh = True))
+        batch = [x for i, x in enumerate(batch) if not i % BEAM_SIZE]
     return [(x[1], x[4], x[5][:-1]) for x in batch]
 
 def predict(filename, model, cti, wti):
@@ -104,18 +101,18 @@ def predict(filename, model, cti, wti):
         x0 = line.strip()
         if x0:
             if re.match("[^\t]+\t[0-9]+( [0-9]+)*$", x0):
-                x0, y = x0.split("\t")
-                y = [int(x) for x in y.split(" ")]
+                x0, y0 = x0.split("\t")
+                y0 = [int(x) for x in y0.split(" ")]
             else: # no ground truth provided
-                y = []
+                y0 = []
             x1 = tokenize(x0)
             xc = [[cti[c] if c in cti else UNK_IDX for c in w] for w in x1]
             xw = [wti[w] if w in wti else UNK_IDX for w in x1]
-            data.append_item(idx = idx, x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y)
+            data.append_item(idx = idx, x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
         if not (HRE and x0): # delimiters (\n, \n\n)
             for _ in range(BEAM_SIZE - 1):
                 data.append_row()
-                data.append_item(idx = idx, x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y)
+                data.append_item(idx = idx, x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
             data.append_row()
     fo.close()
     data.strip()

@@ -86,12 +86,12 @@ zeros = cudify(torch.zeros)
 class dataset():
     def __init__(self):
         self.idx = []
-        self.x0 = [[]] # raw input sequences
-        self.x1 = [[]] # tokenized input sequences
-        self.xc = [[]] # input character sequences
-        self.xw = [[]] # input word sequences
-        self.y0 = [[]] # actual labels
-        self.y1 = [] # predicted labels
+        self.x0 = [[]] # raw input
+        self.x1 = [[]] # tokenized input
+        self.xc = [[]] # indexed input, character-level
+        self.xw = [[]] # indexed input, word-level
+        self.y0 = [[]] # actual output
+        self.y1 = [] # predicted output
 
     def append_item(self, idx = -1, x0 = None, x1 = None, xc = None, xw = None, y0 = None, y1 = None):
         if idx >= 0 : self.idx.append(idx)
@@ -134,15 +134,18 @@ class dataset():
     def split(self): # split into batches
         for i in range(0, len(self.y0), BATCH_SIZE):
             j = i + BATCH_SIZE
-            y0 = self.y0[i:j]
             y0_lens = [len(x) for x in self.xw[i:j]] if HRE else None
             if HRE:
+                x0 = [list(x) for x in self.x0[i:j] for x in x]
+                x1 = [list(x) for x in self.x1[i:j] for x in x]
                 xc = [list(x) for x in self.xc[i:j] for x in x]
                 xw = [list(x) for x in self.xw[i:j] for x in x]
             else:
+                x0 = [list(*x) for x in self.x0[i:j]]
+                x1 = [list(*x) for x in self.x1[i:j]]
                 xc = [list(*x) for x in self.xc[i:j]]
                 xw = [list(*x) for x in self.xw[i:j]]
-            yield xc, xw, y0, y0_lens
+            yield x0, x1, xc, xw, self.y0[i:j], y0_lens
 
     def tensor(self, bc, bw, _sos = False, _eos = False, doc_lens = None):
         sos, eos, pad = [SOS_IDX], [EOS_IDX], [PAD_IDX]
