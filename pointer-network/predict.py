@@ -65,21 +65,19 @@ def beam_search(dec, dec_out, batch, eos, heatmap, t):
 def run_model(model, data):
     data.sort()
     for xc, xw, _, y0_lens in data.split():
-        # batch size
+        b = len(xw) # batch size
+        t = 0 # timestep
+        eos = [False] * b # number of completed sequences in the batch
         xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
-        exit()
-
-        # TODO
-        t = 0
-        eos = [False for _ in xw] # number of completed sequences in the batch
         mask = None if HRE else maskset(xw) # TODO
-        enc_out = model.enc(xc, xw, mask)
+        enc_out = model.enc(b, xc, xw, mask)
+        yc = LongTensor([[SOS_IDX]] * b)
+        yw = LongTensor([SOS_IDX] * b).unsqueeze(1)
+        model.dec.hidden = model.enc.hidden
+        # TODO
+        heatmap = [[[""] + x[2] + [EOS]] for x in batch[:len(eos)]]
         exit()
 
-    yc = LongTensor([[SOS_IDX]] * BATCH_SIZE)
-    yw = LongTensor([SOS_IDX] * BATCH_SIZE).unsqueeze(1)
-    model.dec.hidden = model.enc.hidden
-    heatmap = [[[""] + x[2] + [EOS]] for x in batch[:len(eos)]]
     while sum(eos) < len(eos) and t < MAX_LEN:
         dec_out = model.dec(yc.unsqueeze(1), yw, enc_out, t, mask)
         if BEAM_SIZE == 1:
@@ -103,21 +101,21 @@ def predict(filename, model, cti, wti):
     data = dataset()
     fo = open(filename)
     for idx, line in enumerate(fo):
-        line = line.strip()
-        if line:
-            if re.match("[^\t]+\t[0-9]+( [0-9]+)*$", line):
-                line, y = line.split("\t")
+        x0 = line.strip()
+        if x0:
+            if re.match("[^\t]+\t[0-9]+( [0-9]+)*$", x0):
+                x0, y = x0.split("\t")
                 y = [int(x) for x in y.split(" ")]
             else: # no ground truth provided
                 y = []
-            x = tokenize(line)
-            xc = [[cti[c] if c in cti else UNK_IDX for c in w] for w in x]
-            xw = [wti[w] if w in wti else UNK_IDX for w in x]
-            data.append_item(idx = idx, x = line, xc = xc, xw = xw, y0 = y)
-        if not (HRE and line): # delimiters (\n, \n\n)
+            x1 = tokenize(x0)
+            xc = [[cti[c] if c in cti else UNK_IDX for c in w] for w in x1]
+            xw = [wti[w] if w in wti else UNK_IDX for w in x1]
+            data.append_item(idx = idx, x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y)
+        if not (HRE and x0): # delimiters (\n, \n\n)
             for _ in range(BEAM_SIZE - 1):
                 data.append_row()
-                data.append_item(idx = idx, x = line, xc = xc, xw = xw, y0 = y)
+                data.append_item(idx = idx, x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y)
             data.append_row()
     fo.close()
     data.strip()

@@ -50,7 +50,7 @@ class embed(nn.Module):
         def forward(self, x):
             b = x.size(0) # batch_size (B)
             x = x.view(-1, x.size(2)) # [B * word_seq_len (Lw), char_seq_len (Lc)]
-            x = self.embed(x) # [B * Lw, Lc, dim (H)]
+            x = self.embed(x) # [B * Lw, Lc, dim]
             x = x.unsqueeze(1) # [B * Lw, Ci, Lc, W]
             h = [conv(x) for conv in self.conv] # [B * Lw, Co, Lc, 1] * K
             h = [F.relu(k).squeeze(3) for k in h] # [B * Lw, Co, Lc] * K
