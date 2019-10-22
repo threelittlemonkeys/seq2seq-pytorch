@@ -20,7 +20,7 @@ def load_data():
         if not (HRE and line): # delimiters (\n, \n\n)
             data.append_row()
     data.strip()
-    for _, _, xc, xw, y0, y0_lens in data.split():
+    for _, _, xc, xw, y0, y0_lens, _, _ in data.split():
          xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
          _, y0 = data.tensor(None, y0)
          batch.append((xc, xw, y0))

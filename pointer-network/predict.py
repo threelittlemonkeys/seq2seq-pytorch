@@ -18,7 +18,7 @@ def greedy_search(dec, y1, p1, eos, heatmap):
         eos[i] = (y[i] == dec.enc_out.size(1) or y[i] in y1[i])
         y1[i].append(y[i])
         p1[i] += p[i]
-        heatmap[i].append([y[i]] + dec.attn.a[i].tolist())
+        heatmap[i].append([y[i]] + dec.attn.a[i].exp().tolist())
     return yw
 
 def beam_search(dec, data, eos, heatmap): # TODO
@@ -64,24 +64,23 @@ def beam_search(dec, data, eos, heatmap): # TODO
 
 def run_model(model, data):
     data.sort()
-    for x0, x1, xc, xw, y0, y0_lens in data.split():
+    for x0, x1, xc, xw, y0, y0_lens, y1, p1 in data.split():
         b, t, eos = len(x0), 0, [False] * len(x0) # batch size, time step, EOS states
         xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
         mask = None if HRE else maskset(xw) # TODO
         model.dec.enc_out = model.enc(b, xc, xw, mask)
         model.dec.hidden = model.enc.hidden
-        y1, p1 = [[]] * b, [0] * b
         yc = LongTensor([[[SOS_IDX]]] * b)
         yw = LongTensor([[SOS_IDX]] * b)
-        heatmap = [["", *x, EOS] for x in x1]
+        heatmap = [[["", *x, EOS]] for x in x1]
         while sum(eos) < len(eos) and t < MAX_LEN:
             model.dec.dec_out = model.dec(yc, yw, mask)
             args = (model.dec, y1, p1, eos, heatmap)
             yw = greedy_search(*args) if BEAM_SIZE == 1 else beam_search(*args)
-            yc = torch.cat([xc[i, j] for i, j in enumerate(yw)])
+            yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).unsqueeze(1)
             t += 1
-        print(y1)
-        print(p1)
+        for x in heatmap:
+            print(mat2csv(x, rh = True))
         exit()
         batch, heatmap = zip(*sorted(zip(batch, heatmap), key = lambda x: (x[0][0], -x[0][6])))
         if VERBOSE >= 1:

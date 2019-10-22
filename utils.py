@@ -85,7 +85,7 @@ zeros = cudify(torch.zeros)
 
 class dataset():
     def __init__(self):
-        self.idx = []
+        self.idx = [] # input index
         self.x0 = [[]] # raw input
         self.x1 = [[]] # tokenized input
         self.xc = [[]] # indexed input, character-level
@@ -132,9 +132,14 @@ class dataset():
         self.y1 = [self.y1[i] for i in idx]
 
     def split(self): # split into batches
+        self.y1 = [[]] * len(self.y0)
+        self.p1 = [0] * len(self.y0)
         for i in range(0, len(self.y0), BATCH_SIZE):
             j = i + BATCH_SIZE
+            y0 = self.y0[i:j]
             y0_lens = [len(x) for x in self.xw[i:j]] if HRE else None
+            y1 = self.y1[i:j]
+            p1 = self.p1[i:j]
             if HRE:
                 x0 = [list(x) for x in self.x0[i:j] for x in x]
                 x1 = [list(x) for x in self.x1[i:j] for x in x]
@@ -145,7 +150,7 @@ class dataset():
                 x1 = [list(*x) for x in self.x1[i:j]]
                 xc = [list(*x) for x in self.xc[i:j]]
                 xw = [list(*x) for x in self.xw[i:j]]
-            yield x0, x1, xc, xw, self.y0[i:j], y0_lens
+            yield x0, x1, xc, xw, y0, y0_lens, y1, p1
 
     def tensor(self, bc, bw, _sos = False, _eos = False, doc_lens = None):
         sos, eos, pad = [SOS_IDX], [EOS_IDX], [PAD_IDX]
