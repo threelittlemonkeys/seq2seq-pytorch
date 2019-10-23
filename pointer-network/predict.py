@@ -76,7 +76,7 @@ def run_model(model, data):
         while sum(eos) < len(eos) and t < MAX_LEN:
             model.dec.dec_out = model.dec(yc, yw, mask)
             args = (model.dec, y1, p1, eos, heatmap)
-            yw = greedy_search(*args) if BEAM_SIZE == 1 else beam_search(*args)
+            yw = (greedy_search if BEAM_SIZE == 1 else beam_search)(*args)
             yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).unsqueeze(1)
             t += 1
         for x in heatmap:

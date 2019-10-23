@@ -91,7 +91,8 @@ class dataset():
         self.xc = [[]] # indexed input, character-level
         self.xw = [[]] # indexed input, word-level
         self.y0 = [[]] # actual output
-        self.y1 = [] # predicted output
+        self.y1 = None # predicted output
+        self.p1 = None # probabilities
 
     def append_item(self, idx = -1, x0 = None, x1 = None, xc = None, xw = None, y0 = None, y1 = None):
         if idx >= 0 : self.idx.append(idx)
@@ -121,12 +122,14 @@ class dataset():
         if not len(self.idx):
             self.idx = list(range(len(self.x0)))
         self.idx.sort(key = lambda x: -len(self.xw[x] if HRE else self.xw[x][0]))
+        self.x1 = [self.x1[i] for i in self.idx]
         self.xc = [self.xc[i] for i in self.idx]
         self.xw = [self.xw[i] for i in self.idx]
 
     def unsort(self):
         idx = sorted(range(len(self.idx)), key = lambda x: self.idx[x])
         self.idx = list(range(len(self.x0)))
+        self.x1 = [self.x1[i] for i in idx]
         self.xc = [self.xc[i] for i in idx]
         self.xw = [self.xw[i] for i in idx]
         self.y1 = [self.y1[i] for i in idx]
