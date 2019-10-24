@@ -92,16 +92,16 @@ class dataset():
         self.xw = [[]] # indexed input, word-level
         self.y0 = [[]] # actual output
         self.y1 = None # predicted output
-        self.p1 = None # probabilities
+        self.prob = None # probabilities
+        self.heatmap = None
 
-    def append_item(self, idx = -1, x0 = None, x1 = None, xc = None, xw = None, y0 = None, y1 = None):
+    def append_item(self, idx = -1, x0 = None, x1 = None, xc = None, xw = None, y0 = None):
         if idx >= 0 : self.idx.append(idx)
         if x0: self.x0[-1].append(x0)
         if x1: self.x1[-1].append(x1)
         if xc: self.xc[-1].append(xc)
         if xw: self.xw[-1].append(xw)
         if y0: self.y0[-1].extend(y0)
-        if y1: self.y1.extend(y1)
 
     def append_row(self):
         self.x0.append([])
@@ -133,16 +133,20 @@ class dataset():
         self.xc = [self.xc[i] for i in idx]
         self.xw = [self.xw[i] for i in idx]
         self.y1 = [self.y1[i] for i in idx]
+        self.prob = [self.prob[i] for i in idx]
+        self.heatmap = [self.heatmap[i] for i in idx]
 
     def split(self): # split into batches
-        self.y1 = [[]] * len(self.y0)
-        self.p1 = [0] * len(self.y0)
+        self.y1 = [[] for _ in self.y0]
+        self.prob = [0 for _ in self.y0]
+        self.heatmap = [[] for _ in self.y0]
         for i in range(0, len(self.y0), BATCH_SIZE):
             j = i + BATCH_SIZE
             y0 = self.y0[i:j]
             y0_lens = [len(x) for x in self.xw[i:j]] if HRE else None
             y1 = self.y1[i:j]
-            p1 = self.p1[i:j]
+            p1 = self.prob[i:j]
+            h1 = self.heatmap[i:j]
             if HRE:
                 x0 = [list(x) for x in self.x0[i:j] for x in x]
                 x1 = [list(x) for x in self.x1[i:j] for x in x]
@@ -153,7 +157,7 @@ class dataset():
                 x1 = [list(*x) for x in self.x1[i:j]]
                 xc = [list(*x) for x in self.xc[i:j]]
                 xw = [list(*x) for x in self.xw[i:j]]
-            yield x0, x1, xc, xw, y0, y0_lens, y1, p1
+            yield x0, x1, xc, xw, y0, y0_lens, y1, p1, h1
 
     def tensor(self, bc, bw, _sos = False, _eos = False, doc_lens = None):
         sos, eos, pad = [SOS_IDX], [EOS_IDX], [PAD_IDX]

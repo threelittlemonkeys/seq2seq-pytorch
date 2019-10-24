@@ -9,16 +9,17 @@ def load_model():
     load_checkpoint(sys.argv[1], model)
     return model, cti, wti
 
-def greedy_search(dec, y1, p1, eos, heatmap):
+def greedy_search(dec, y1, p1, h1, eos, mask):
     p, yw = dec.dec_out.topk(1)
     y = yw.view(-1).tolist()
-    for i in range(len(eos)):
-        if eos[i]:
+    for i, _ in filter(lambda x: not x[1], enumerate(eos)):
+        j = mask[1][i] - 1 # sequence length
+        if y[i] == j or y[i] in y1[i]:
+            eos[i] = True
             continue
-        eos[i] = (y[i] == dec.enc_out.size(1) or y[i] in y1[i])
         y1[i].append(y[i])
         p1[i] += p[i]
-        heatmap[i].append([y[i]] + dec.attn.a[i].exp().tolist())
+        h1[i].append([y[i]] + dec.attn.a[i, :j].exp().tolist())
     return yw
 
 def beam_search(dec, data, eos, heatmap): # TODO
@@ -64,34 +65,35 @@ def beam_search(dec, data, eos, heatmap): # TODO
 
 def run_model(model, data):
     data.sort()
-    for x0, x1, xc, xw, y0, y0_lens, y1, p1 in data.split():
-        b, t, eos = len(x0), 0, [False] * len(x0) # batch size, time step, EOS states
+    for x0, x1, xc, xw, y0, y0_lens, y1, p1, h1 in data.split():
+        b, t, eos = len(x0), 0, [False for _ in x0] # batch size, time step, EOS states
         xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
         mask = None if HRE else maskset(xw) # TODO
         model.dec.enc_out = model.enc(b, xc, xw, mask)
         model.dec.hidden = model.enc.hidden
         yc = LongTensor([[[SOS_IDX]]] * b)
         yw = LongTensor([[SOS_IDX]] * b)
-        heatmap = [[["", *x, EOS]] for x in x1]
+        for i, x in enumerate(x1): # heatmap column headers
+            h1[i].append(["", *x])
         while sum(eos) < len(eos) and t < MAX_LEN:
             model.dec.dec_out = model.dec(yc, yw, mask)
-            args = (model.dec, y1, p1, eos, heatmap)
+            args = (model.dec, y1, p1, h1, eos, mask)
             yw = (greedy_search if BEAM_SIZE == 1 else beam_search)(*args)
             yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).unsqueeze(1)
             t += 1
-        for x in heatmap:
-            print(mat2csv(x, rh = True))
-        exit()
-        batch, heatmap = zip(*sorted(zip(batch, heatmap), key = lambda x: (x[0][0], -x[0][6])))
-        if VERBOSE >= 1:
-            for i in range(len(heatmap)):
-                if VERBOSE < 2 and i % BEAM_SIZE:
-                    continue
-                print("heatmap[%d] =" % i)
-                print(heatmap[i])
-                print(mat2csv(heatmap[i], rh = True))
-        batch = [x for i, x in enumerate(batch) if not i % BEAM_SIZE]
-    return [(x[1], x[4], x[5][:-1]) for x in batch]
+    data.unsort()
+    if VERBOSE:
+        for i, j in enumerate(data.heatmap):
+            if VERBOSE < 2 and i % BEAM_SIZE:
+                continue
+            print("heatmap[%d] =" % i)
+            print(mat2csv(j, rh = True))
+    for x0, y0, y1 in zip(data.x0, data.y0, data.y1):
+        # batch = [x for i, x in enumerate(batch) if not i % BEAM_SIZE]
+        if HRE:
+            pass
+        else:
+            yield x0, y0, y1
 
 def predict(filename, model, cti, wti):
     data = dataset()
