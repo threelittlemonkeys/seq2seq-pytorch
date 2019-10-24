@@ -10,23 +10,26 @@ def load_model():
     return model, cti, wti
 
 def greedy_search(dec, y1, p1, h1, eos, mask):
-    p, yw = dec.dec_out.topk(1)
-    y = yw.view(-1).tolist()
+    bp, by = dec.dec_out.topk(1)
+    y = by.view(-1).tolist()
     for i, _ in filter(lambda x: not x[1], enumerate(eos)):
         j = mask[1][i] - 1 # sequence length
         if y[i] == j or y[i] in y1[i]:
             eos[i] = True
             continue
         y1[i].append(y[i])
-        p1[i] += p[i]
+        p1[i] += bp[i]
         h1[i].append([y[i]] + dec.attn.a[i, :j].exp().tolist())
-    return yw
+    return by
 
-def beam_search(dec, data, eos, heatmap): # TODO
-    bp, by = dec_out[:len(eos)].topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
-    bp += Tensor([-10000 if b else a[6] for a, b in zip(batch, eos)]).unsqueeze(1) # update
+def beam_search(dec, y1, p1, h1, eos, mask): # TODO
+    bp, by = dec.dec_out.topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
+    bp += Tensor([-10000 if b else a for a, b in zip(p1, eos)]).unsqueeze(1) # update
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
     by = by.view(-1, BEAM_SIZE ** 2)
+    print(bp)
+    print(by)
+    exit()
     if t == 0: # remove non-first duplicate beams # TODO
         bp = bp[:, :BEAM_SIZE]
         by = by[:, :BEAM_SIZE]
