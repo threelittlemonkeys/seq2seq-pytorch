@@ -20,9 +20,9 @@ def load_data():
         if not (HRE and line): # delimiters (\n, \n\n)
             data.append_row()
     data.strip()
-    for _, _, xc, xw, y0, y0_lens, _, _ in data.split():
-         xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
-         _, y0 = data.tensor(None, y0)
+    for _ in data.split():
+         xc, xw = data.tensor(data._xc, data._xw, _eos = True, doc_lens = data._lens)
+         _, y0 = data.tensor(None, data._y0)
          batch.append((xc, xw, y0))
     fo.close()
     print("data size: %d" % (len(batch) * BATCH_SIZE))

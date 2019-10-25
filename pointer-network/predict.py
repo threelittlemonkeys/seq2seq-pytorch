@@ -9,33 +9,31 @@ def load_model():
     load_checkpoint(sys.argv[1], model)
     return model, cti, wti
 
-def greedy_search(dec, y1, p1, h1, eos, mask):
+def greedy_search(dec, data, eos, mask):
     bp, by = dec.dec_out.topk(1)
     y = by.view(-1).tolist()
     for i, _ in filter(lambda x: not x[1], enumerate(eos)):
         j = mask[1][i] - 1 # sequence length
-        if y[i] == j or y[i] in y1[i]:
+        if y[i] == j or y[i] in data._y1[i]:
             eos[i] = True
             continue
-        y1[i].append(y[i])
-        p1[i] += bp[i]
-        h1[i].append([y[i]] + dec.attn.a[i, :j].exp().tolist())
+        data._y1[i].append(y[i])
+        data._prob[i] += bp[i]
+        data._attn[i].append([y[i]] + dec.attn.a[i, :j].exp().tolist())
     return by
 
-def beam_search(dec, y1, p1, h1, eos, mask): # TODO
+def beam_search(dec, data, eos, mask):
     bp, by = dec.dec_out.topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
-    bp += Tensor([-10000 if b else a for a, b in zip(p1, eos)]).unsqueeze(1) # update
+    bp += Tensor([-10000 if b else a for a, b in zip(data._prob, eos)]).unsqueeze(1)
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
     by = by.view(-1, BEAM_SIZE ** 2)
-    print(bp)
-    print(by)
-    exit()
-    if t == 0: # remove non-first duplicate beams # TODO
+    if not sum(eos): # remove non-first duplicate beams at t = 0
         bp = bp[:, :BEAM_SIZE]
         by = by[:, :BEAM_SIZE]
     for i, (p, y) in enumerate(zip(bp, by)): # for each sequence
         y = y.tolist()
         j = i * BEAM_SIZE
+        # TODO
         b1, m1 = [], [] # batch and heatmap to be updated
         if VERBOSE >= 2:
             for k in range(0, len(p), BEAM_SIZE): # for each beam
@@ -68,29 +66,31 @@ def beam_search(dec, y1, p1, h1, eos, mask): # TODO
 
 def run_model(model, data):
     data.sort()
-    for x0, x1, xc, xw, y0, y0_lens, y1, p1, h1 in data.split():
-        b, t, eos = len(x0), 0, [False for _ in x0] # batch size, time step, EOS states
-        xc, xw = data.tensor(xc, xw, _eos = True, doc_lens = y0_lens)
+    for _ in data.split():
+        b, t = len(data._x0), 0 # batch size, time step
+        eos = [False for _ in data._x0] # EOS states
+        lens = [len(x) for x in self._xw] if HRE else None
+        xc, xw = data.tensor(data._xc, data._xw, _eos = True, doc_lens = lens)
         mask = None if HRE else maskset(xw) # TODO
         model.dec.enc_out = model.enc(b, xc, xw, mask)
         model.dec.hidden = model.enc.hidden
         yc = LongTensor([[[SOS_IDX]]] * b)
         yw = LongTensor([[SOS_IDX]] * b)
-        for i, x in enumerate(x1): # heatmap column headers
-            h1[i].append(["", *x])
+        for i, x in enumerate(data._x1): # attention heatmap column headers
+            data._attn[i].append(["", *x])
         while sum(eos) < len(eos) and t < MAX_LEN:
             model.dec.dec_out = model.dec(yc, yw, mask)
-            args = (model.dec, y1, p1, h1, eos, mask)
+            args = (model.dec, data, eos, mask)
             yw = (greedy_search if BEAM_SIZE == 1 else beam_search)(*args)
             yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).unsqueeze(1)
             t += 1
     data.unsort()
     if VERBOSE:
-        for i, j in enumerate(data.heatmap):
+        for i, x in enumerate(data.attn):
             if VERBOSE < 2 and i % BEAM_SIZE:
                 continue
             print("heatmap[%d] =" % i)
-            print(mat2csv(j, rh = True))
+            print(mat2csv(x, rh = True))
     for x0, y0, y1 in zip(data.x0, data.y0, data.y1):
         # batch = [x for i, x in enumerate(batch) if not i % BEAM_SIZE]
         if HRE:

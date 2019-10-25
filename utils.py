@@ -85,6 +85,7 @@ zeros = cudify(torch.zeros)
 
 class dataset():
     def __init__(self):
+        # dataset
         self.idx = [] # input index
         self.x0 = [[]] # raw input
         self.x1 = [[]] # tokenized input
@@ -93,7 +94,17 @@ class dataset():
         self.y0 = [[]] # actual output
         self.y1 = None # predicted output
         self.prob = None # probabilities
-        self.heatmap = None
+        self.attn = None # attention heatmap
+
+        # batch
+        self._x0 = None
+        self._x1 = None
+        self._xc = None
+        self._xw = None
+        self._y0 = None
+        self._y1 = None
+        self._prob = None
+        self._attn = None
 
     def append_item(self, idx = -1, x0 = None, x1 = None, xc = None, xw = None, y0 = None):
         if idx >= 0 : self.idx.append(idx)
@@ -134,30 +145,29 @@ class dataset():
         self.xw = [self.xw[i] for i in idx]
         self.y1 = [self.y1[i] for i in idx]
         self.prob = [self.prob[i] for i in idx]
-        self.heatmap = [self.heatmap[i] for i in idx]
+        self.attn = [self.attn[i] for i in idx]
 
     def split(self): # split into batches
         self.y1 = [[] for _ in self.y0]
         self.prob = [0 for _ in self.y0]
-        self.heatmap = [[] for _ in self.y0]
+        self.attn = [[] for _ in self.y0]
         for i in range(0, len(self.y0), BATCH_SIZE):
             j = i + BATCH_SIZE
-            y0 = self.y0[i:j]
-            y0_lens = [len(x) for x in self.xw[i:j]] if HRE else None
-            y1 = self.y1[i:j]
-            p1 = self.prob[i:j]
-            h1 = self.heatmap[i:j]
+            self._y0 = self.y0[i:j]
+            self._y1 = self.y1[i:j]
+            self._prob = self.prob[i:j]
+            self._attn = self.attn[i:j]
             if HRE:
-                x0 = [list(x) for x in self.x0[i:j] for x in x]
-                x1 = [list(x) for x in self.x1[i:j] for x in x]
-                xc = [list(x) for x in self.xc[i:j] for x in x]
-                xw = [list(x) for x in self.xw[i:j] for x in x]
+                self._x0 = [list(x) for x in self.x0[i:j] for x in x]
+                self._x1 = [list(x) for x in self.x1[i:j] for x in x]
+                self._xc = [list(x) for x in self.xc[i:j] for x in x]
+                self._xw = [list(x) for x in self.xw[i:j] for x in x]
             else:
-                x0 = [list(*x) for x in self.x0[i:j]]
-                x1 = [list(*x) for x in self.x1[i:j]]
-                xc = [list(*x) for x in self.xc[i:j]]
-                xw = [list(*x) for x in self.xw[i:j]]
-            yield x0, x1, xc, xw, y0, y0_lens, y1, p1, h1
+                self._x0 = [list(*x) for x in self.x0[i:j]]
+                self._x1 = [list(*x) for x in self.x1[i:j]]
+                self._xc = [list(*x) for x in self.xc[i:j]]
+                self._xw = [list(*x) for x in self.xw[i:j]]
+            yield
 
     def tensor(self, bc, bw, _sos = False, _eos = False, doc_lens = None):
         sos, eos, pad = [SOS_IDX], [EOS_IDX], [PAD_IDX]
