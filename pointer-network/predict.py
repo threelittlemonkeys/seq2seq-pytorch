@@ -22,33 +22,35 @@ def greedy_search(dec, data, eos, mask):
         data._attn[i].append([y[i]] + dec.attn.a[i, :j].exp().tolist())
     return by
 
-def beam_search(dec, data, eos, mask):
+def beam_search(dec, data, eos, mask, t):
     bp, by = dec.dec_out.topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
     bp += Tensor([-10000 if b else a for a, b in zip(data._prob, eos)]).unsqueeze(1)
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
     by = by.view(-1, BEAM_SIZE ** 2)
-    if not sum(eos): # remove non-first duplicate beams at t = 0
+    if t == 0: # remove non-first duplicate beams
         bp = bp[:, :BEAM_SIZE]
         by = by[:, :BEAM_SIZE]
     for i, (p, y) in enumerate(zip(bp, by)): # for each sequence
-        y = y.tolist()
         j = i * BEAM_SIZE
-        # TODO
-        b1, m1 = [], [] # batch and heatmap to be updated
+        y = y.tolist()
+        _y, _p, _a = [], [], []
         if VERBOSE >= 2:
             for k in range(0, len(p), BEAM_SIZE): # for each beam
                 q = j + k // BEAM_SIZE
-                w = [(next(reversed(batch[q][5]), SOS_IDX), batch[q][6])] # previous token
+                w = [(next(reversed(data._y1[q]), SOS_IDX), data._prob[q])] # previous token
                 w += list(zip(y, p))[k:k + BEAM_SIZE] # current candidates
                 w = [(a, round(b.item(), 4)) for a, b in w]
-                print("beam[%d][%d][%d] =" % (i, t, q), w[0], "->", w[1:])
+                print("batch[%d][%d][%d] =" % (i, t, q), w[0], "->", *w[1:])
         for p, k in zip(*p.topk(BEAM_SIZE)): # for each n-best candidate
             q = j + k // BEAM_SIZE
-            b1.append(batch[q].copy())
-            b1[-1][5] = b1[-1][5] + [y[k]] # token
-            b1[-1][6] = p # probability
-            m1.append(heatmap[q].copy())
-            m1[-1].append([y[k]] + dec.attn.a[q][:len(batch[j][1]) + 1].tolist())
+            _y.append(data._y1[q] + [y[k]])
+            _p.append(data._prob[q] + p)
+            _a.append([*data._attn[q], [y[k], *dec.attn.a[q][:mask[1][q]]]])
+            # _a.append([*data._attn[q], [y[k], *dec.attn.a[q][:mask[1][q]].tolist()]])
+        print(_y)
+        print(_p)
+        print(_a)
+        exit()
         for k in filter(lambda x: eos[j + x], range(BEAM_SIZE)): # append completed sequences
             b1.append(batch[j + k])
             m1.append(heatmap[j + k])
@@ -69,7 +71,7 @@ def run_model(model, data):
     for _ in data.split():
         b, t = len(data._x0), 0 # batch size, time step
         eos = [False for _ in data._x0] # EOS states
-        lens = [len(x) for x in self._xw] if HRE else None
+        lens = [len(x) for x in self._xw] if HRE else None # TODO
         xc, xw = data.tensor(data._xc, data._xw, _eos = True, doc_lens = lens)
         mask = None if HRE else maskset(xw) # TODO
         model.dec.enc_out = model.enc(b, xc, xw, mask)
@@ -81,7 +83,7 @@ def run_model(model, data):
         while sum(eos) < len(eos) and t < MAX_LEN:
             model.dec.dec_out = model.dec(yc, yw, mask)
             args = (model.dec, data, eos, mask)
-            yw = (greedy_search if BEAM_SIZE == 1 else beam_search)(*args)
+            yw = greedy_search(*args) if BEAM_SIZE == 1 else beam_search(*args, t)
             yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).unsqueeze(1)
             t += 1
     data.unsort()
@@ -127,6 +129,5 @@ def predict(filename, model, cti, wti):
 if __name__ == "__main__":
     if len(sys.argv) != 5:
         sys.exit("Usage: %s model char_to_idx word_to_idx test_data" % sys.argv[0])
-    result = predict(sys.argv[4], *load_model())
-    for x, y0, y1 in result:
+    for x, y0, y1 in predict(sys.argv[4], *load_model()):
         print((x, y0, y1) if y0 else (x, y1))

@@ -85,7 +85,6 @@ zeros = cudify(torch.zeros)
 
 class dataset():
     def __init__(self):
-        # dataset
         self.idx = [] # input index
         self.x0 = [[]] # raw input
         self.x1 = [[]] # tokenized input
@@ -149,7 +148,7 @@ class dataset():
 
     def split(self): # split into batches
         self.y1 = [[] for _ in self.y0]
-        self.prob = [0 for _ in self.y0]
+        self.prob = [Tensor([0]) for _ in self.y0]
         self.attn = [[] for _ in self.y0]
         for i in range(0, len(self.y0), BATCH_SIZE):
             j = i + BATCH_SIZE

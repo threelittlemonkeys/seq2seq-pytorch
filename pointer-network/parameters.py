@@ -34,4 +34,5 @@ UNK_IDX = 3
 CUDA = torch.cuda.is_available()
 torch.manual_seed(0) # for reproducibility
 
+NUM_DIGITS = 4 # number of digits to print
 assert BATCH_SIZE % BEAM_SIZE == 0
