@@ -13,10 +13,8 @@ def greedy_search(dec, data, eos, mask):
     bp, by = dec.dec_out.topk(1)
     y = by.view(-1).tolist()
     for i, _ in filter(lambda x: not x[1], enumerate(eos)):
-        j = mask[1][i] - 1 # sequence length
-        if y[i] == j or y[i] in data._y1[i]:
-            eos[i] = True
-            continue
+        j = mask[1][i] # sequence length
+        eos[i] = (y[i] == j - 1 or y[i] in data._y1[i])
         data._y1[i].append(y[i])
         data._prob[i] += bp[i]
         data._attn[i].append([y[i], *dec.attn.a[i, :j].exp()])
@@ -45,16 +43,14 @@ def beam_search(dec, data, eos, mask, t):
             q = j + k // BEAM_SIZE
             _y.append(data._y1[q] + [y[k]])
             _p.append(data._prob[q] + p)
-            _a.append(data._attn[q] + [[y[k], *dec.attn.a[q][:mask[1][q]]]])
+            _a.append(data._attn[q] + [[y[k], *dec.attn.a[q][:mask[1][q]].exp()]])
         for k in filter(lambda x: eos[j + x], range(BEAM_SIZE)): # completed sequences
             _y.append(data._y1[j + k])
             _p.append(data._prob[j + k])
             _a.append(data._attn[j + k])
         topk = sorted(zip(_y, _p, _a), key = lambda x: -x[1])[:BEAM_SIZE]
         for k, (y, p, a) in enumerate(topk, j):
-            if y[-1] == mask[1][j] - 1 or y[-1] in y[:-1]:
-                eos[k] = True
-                continue
+            eos[k] = (y[-1] == mask[1][j] - 1 or y[-1] in y[:-1])
             data._y1[k], data._prob[k], data._attn[k] = y, p, a
             if VERBOSE >= 2:
                 print("candidate[%d] =" % (k - j), (y, round(p.item(), 4)))
@@ -73,21 +69,26 @@ def run_model(model, data):
         yc = LongTensor([[[SOS_IDX]]] * b)
         yw = LongTensor([[SOS_IDX]] * b)
         for i, x in enumerate(data._x1): # attention heatmap column headers
-            data._attn[i].append(["", *x])
+            data._attn[i].append(["", *x, EOS])
         while sum(eos) < len(eos) and t < MAX_LEN:
             model.dec.dec_out = model.dec(yc, yw, mask)
             args = (model.dec, data, eos, mask)
             yw = greedy_search(*args) if BEAM_SIZE == 1 else beam_search(*args, t)
             yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).unsqueeze(1)
             t += 1
+        data.y1.extend(data._y1)
+        data.prob.extend(data._prob)
+        data.attn.extend(data._attn)
     data.unsort()
     if VERBOSE:
         print()
-        for i, x in filter(lambda x: not x[0] % BEAM_SIZE, enumerate(data._attn)):
+        for i, x in filter(lambda x: not x[0] % BEAM_SIZE, enumerate(data.attn)):
             print("heatmap[%d] =" % (i // BEAM_SIZE)) # TODO
             print(mat2csv(x, rh = True))
-    for x0, y0, y1 in zip(data.x0, data.y0, data.y1):
-        # batch = [x for i, x in enumerate(batch) if not i % BEAM_SIZE]
+    for i, (x0, y0, y1) in enumerate(zip(data.x0, data.y0, data.y1)):
+        if i % BEAM_SIZE:
+            continue
+        y1.pop() # remove EOS token
         if HRE:
             pass
         else:
@@ -96,7 +97,7 @@ def run_model(model, data):
 def predict(filename, model, cti, wti):
     data = dataset()
     fo = open(filename)
-    for idx, line in enumerate(fo):
+    for line in fo:
         x0 = line.strip()
         if x0:
             if re.match("[^\t]+\t[0-9]+( [0-9]+)*$", x0):
@@ -107,11 +108,11 @@ def predict(filename, model, cti, wti):
             x1 = tokenize(x0)
             xc = [[cti[c] if c in cti else UNK_IDX for c in w] for w in x1]
             xw = [wti[w] if w in wti else UNK_IDX for w in x1]
-            data.append_item(idx = idx, x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
+            data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
         if not (HRE and x0): # delimiters (\n, \n\n)
             for _ in range(BEAM_SIZE - 1):
                 data.append_row()
-                data.append_item(idx = idx, x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
+                data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
             data.append_row()
     fo.close()
     data.strip()

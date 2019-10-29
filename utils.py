@@ -91,9 +91,9 @@ class dataset():
         self.xc = [[]] # indexed input, character-level
         self.xw = [[]] # indexed input, word-level
         self.y0 = [[]] # actual output
-        self.y1 = None # predicted output
-        self.prob = None # probabilities
-        self.attn = None # attention heatmap
+        self.y1 = [] # predicted output
+        self.prob = [] # probabilities
+        self.attn = [] # attention heatmap
 
         # batch
         self._x0 = None
@@ -105,8 +105,7 @@ class dataset():
         self._prob = None
         self._attn = None
 
-    def append_item(self, idx = -1, x0 = None, x1 = None, xc = None, xw = None, y0 = None):
-        if idx >= 0 : self.idx.append(idx)
+    def append_item(self, x0 = None, x1 = None, xc = None, xw = None, y0 = None):
         if x0: self.x0[-1].append(x0)
         if x1: self.x1[-1].append(x1)
         if xc: self.xc[-1].append(xc)
@@ -121,48 +120,43 @@ class dataset():
         self.y0.append([])
 
     def strip(self):
-        while len(self.xw[-1]) == 0:
-            self.x0.pop()
-            self.x1.pop()
-            self.xc.pop()
-            self.xw.pop()
-            self.y0.pop()
+        if len(self.xw[-1]):
+            return
+        self.x0.pop()
+        self.x1.pop()
+        self.xc.pop()
+        self.xw.pop()
+        self.y0.pop()
 
     def sort(self):
-        if not len(self.idx):
-            self.idx = list(range(len(self.x0)))
+        self.idx = list(range(len(self.x0)))
         self.idx.sort(key = lambda x: -len(self.xw[x] if HRE else self.xw[x][0]))
         self.x1 = [self.x1[i] for i in self.idx]
         self.xc = [self.xc[i] for i in self.idx]
         self.xw = [self.xw[i] for i in self.idx]
 
     def unsort(self):
-        idx = sorted(range(len(self.idx)), key = lambda x: self.idx[x])
-        self.idx = list(range(len(self.x0)))
-        self.x1 = [self.x1[i] for i in idx]
-        self.xc = [self.xc[i] for i in idx]
-        self.xw = [self.xw[i] for i in idx]
-        self.y1 = [self.y1[i] for i in idx]
-        self.prob = [self.prob[i] for i in idx]
-        self.attn = [self.attn[i] for i in idx]
+        self.idx = sorted(range(len(self.x0)), key = lambda x: self.idx[x])
+        self.x1 = [self.x1[i] for i in self.idx]
+        self.xc = [self.xc[i] for i in self.idx]
+        self.xw = [self.xw[i] for i in self.idx]
+        self.y1 = [self.y1[i] for i in self.idx]
+        self.prob = [self.prob[i] for i in self.idx]
+        self.attn = [self.attn[i] for i in self.idx]
 
     def split(self): # split into batches
-        self.y1 = [[] for _ in self.y0]
-        self.prob = [Tensor([0]) for _ in self.y0]
-        self.attn = [[] for _ in self.y0]
         for i in range(0, len(self.y0), BATCH_SIZE):
-            j = i + BATCH_SIZE
+            j = i + min(BATCH_SIZE, len(self.x0) - i)
+            self._x0 = self.x0[i:j]
             self._y0 = self.y0[i:j]
-            self._y1 = self.y1[i:j]
-            self._prob = self.prob[i:j]
-            self._attn = self.attn[i:j]
+            self._y1 = [[] for _ in range(j - i)]
+            self._prob = [Tensor([0]) for _ in range(j - i)]
+            self._attn = [[] for _ in range(j - i)]
             if HRE:
-                self._x0 = [list(x) for x in self.x0[i:j] for x in x]
                 self._x1 = [list(x) for x in self.x1[i:j] for x in x]
                 self._xc = [list(x) for x in self.xc[i:j] for x in x]
                 self._xw = [list(x) for x in self.xw[i:j] for x in x]
             else:
-                self._x0 = [list(*x) for x in self.x0[i:j]]
                 self._x1 = [list(*x) for x in self.x1[i:j]]
                 self._xc = [list(*x) for x in self.xc[i:j]]
                 self._xw = [list(*x) for x in self.xw[i:j]]
