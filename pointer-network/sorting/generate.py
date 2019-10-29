@@ -4,11 +4,11 @@ import random
 if __name__ == "__main__": # generate lists of random numbers
     if len(sys.argv) != 5:
         sys.exit("Usage: %s unit max_num max_len data_size" % sys.argv[0])
-    nums = range(0, max_num + 1)
     unit = sys.argv[1] # unit
     max_num = int(sys.argv[2]) # maximum number
     max_len = int(sys.argv[3]) # maximum sequence lengh
     data_size = int(sys.argv[4]) # data size
+    nums = range(0, max_num + 1)
 
     if unit == "word":
         z = 0
