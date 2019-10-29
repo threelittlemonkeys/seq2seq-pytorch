@@ -6,18 +6,27 @@ def evaluate(result, summary = False):
     tpfn = defaultdict(int) # true positives + false negatives
     tpfp = defaultdict(int) # true positives + false positives
     for _, y0, y1 in result: # actual value, prediction
+        # evaluate on a sequence basis
+        y0 = tuple(y0)
+        y1 = tuple(y1)
+        tp[y0] += (y0 == y1)
+        tpfn[y0] += 1
+        tpfp[y1] += 1
+        '''
+        # evaluate on a token basis
         for y in y0:
             tp[y] += (y in y1)
             tpfn[y] += 1
         for y in y1:
             tpfp[y] += 1
+        '''
     for y in sorted(tpfn.keys()):
         pr = (tp[y] / tpfp[y]) if tpfp[y] else 0
         rc = (tp[y] / tpfn[y]) if tpfn[y] else 0
         avg["macro_pr"] += pr
         avg["macro_rc"] += rc
         if not summary:
-            print("label = %s" % y)
+            print("label =", y)
             print("precision = %f (%d/%d)" % (pr, tp[y], tpfp[y]))
             print("recall = %f (%d/%d)" % (rc, tp[y], tpfn[y]))
             print("f1 = %f" % f1(pr, rc))
