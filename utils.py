@@ -92,7 +92,7 @@ class dataset():
         self.xw = [[]] # indexed input, word-level
         self.y0 = [[]] # actual output
         self.y1 = [] # predicted output
-        self.prob = [] # probabilities
+        self.prob = [] # probability
         self.attn = [] # attention heatmap
 
         # batch
