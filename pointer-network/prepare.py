@@ -31,4 +31,3 @@ if __name__ == "__main__":
     save_data(sys.argv[1] + ".csv", data)
     save_tkn_to_idx(sys.argv[1] + ".char_to_idx", cti)
     save_tkn_to_idx(sys.argv[1] + ".word_to_idx", wti)
-

@@ -22,7 +22,7 @@ def greedy_search(dec, data, eos, mask):
 
 def beam_search(dec, data, eos, mask, t):
     bp, by = dec.dec_out.topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
-    bp += Tensor([-10000 if b else a for a, b in zip(data._prob, eos)]).unsqueeze(1) # update
+    bp += Tensor([-10000 if b else a for a, b in zip(data._prob, eos)]).unsqueeze(1)
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
     by = by.view(-1, BEAM_SIZE ** 2)
     if t == 0: # remove non-first duplicate beams
@@ -35,10 +35,10 @@ def beam_search(dec, data, eos, mask, t):
             print()
             for k in range(0, len(p), BEAM_SIZE): # for each beam
                 q = j + k // BEAM_SIZE
-                w = [(next(reversed(data._y1[q]), SOS_IDX), data._prob[q])] # previous token
+                w = [(data._y1[q], data._prob[q])] # previous token
                 w += list(zip(y, p))[k:k + BEAM_SIZE] # current candidates
                 w = [(a, round(b.item(), 4)) for a, b in w]
-                print("batch[%d][%d][%d] =" % (i, t, k // BEAM_SIZE), w[0], "->", *w[1:])
+                print("beam[%d][%d][%d] =" % (i, t, k // BEAM_SIZE), w[0], "->", *w[1:])
         for p, k in zip(*p.topk(BEAM_SIZE)): # n-best candidates
             q = j + k // BEAM_SIZE
             _y.append(data._y1[q] + [y[k]])
@@ -53,7 +53,7 @@ def beam_search(dec, data, eos, mask, t):
             eos[k] = (y[-1] == mask[1][j] - 1 or y[-1] in y[:-1])
             data._y1[k], data._prob[k], data._attn[k] = y, p, a
             if VERBOSE >= 2:
-                print("candidate[%d] =" % (k - j), (y, round(p.item(), 4)))
+                print("best[%d] =" % (k - j), (y, round(p.item(), 4)))
     return LongTensor([next(reversed(x), SOS_IDX) for x in data._y1]).unsqueeze(1)
 
 def run_model(model, data):
