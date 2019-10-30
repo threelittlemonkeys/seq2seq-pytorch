@@ -61,8 +61,7 @@ def run_model(model, data):
     for _ in data.split():
         b, t = len(data._x0), 0 # batch size, time step
         eos = [False for _ in data._x0] # EOS states
-        lens = [len(x) for x in self._xw] if HRE else None # TODO
-        xc, xw = data.tensor(data._xc, data._xw, _eos = True, doc_lens = lens)
+        xc, xw = data.tensor(data._xc, data._xw, _eos = True, lens = data._lens)
         mask = None if HRE else maskset(xw) # TODO
         model.dec.enc_out = model.enc(b, xc, xw, mask)
         model.dec.hidden = model.enc.hidden

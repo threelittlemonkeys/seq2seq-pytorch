@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-UNIT = "word" # unit of tokenization (char, word)
+UNIT = "sent" # unit of tokenization (char, word)
 MIN_LEN = 1 # minimum sequence length for training
 MAX_LEN = 50 # maximum sequence length for training and decoding
 RNN_TYPE = "LSTM" # LSTM or GRU
@@ -17,7 +17,7 @@ HIDDEN_SIZE = 1000
 DROPOUT = 0.5
 LEARNING_RATE = 1e-4
 BEAM_SIZE = 1
-VERBOSE = 2 # 0: None, 1: attention heatmap, 2: beam search
+VERBOSE = 0 # 0: None, 1: attention heatmap, 2: beam search
 EVAL_EVERY = 10
 SAVE_EVERY = 10
 
@@ -32,6 +32,11 @@ EOS_IDX = 2
 UNK_IDX = 3
 
 CUDA = torch.cuda.is_available()
+if CUDA:
+    Tensor = torch.cuda.FloatTensor
+    LongTensor = torch.cuda.LongTensor
+    zeros = lambda *x: torch.zeros(*x).cuda()
+    # torch.cuda.set_device(0)
 torch.manual_seed(0) # for reproducibility
 
 NUM_DIGITS = 4 # number of digits to print

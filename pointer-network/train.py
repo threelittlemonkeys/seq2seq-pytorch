@@ -14,15 +14,17 @@ def load_data():
         if line:
             x, y = line.split("\t")
             x = [x.split(":") for x in x.split(" ")]
-            y = [int(i) for i in y.split(" ")] + [len(x)]
+            y = [int(y)] if HRE else [int(x) for x in y.split(" ")] + [len(x)]
             xc, xw = zip(*[(list(map(int, xc.split("+"))), int(xw)) for xc, xw in x])
             data.append_item(xc = xc, xw = xw, y0 = y)
         if not (HRE and line): # delimiters (\n, \n\n)
+            if HRE:
+                xc, xw, y = [[EOS_IDX]], [EOS_IDX], [len(data.y0[-1]) + 1]
+                data.append_item(xc = xc, xw = xw, y0 = y)
             data.append_row()
     data.strip()
     for _ in data.split():
-        lens = None if HRE else None # TODO
-        xc, xw = data.tensor(data._xc, data._xw, _eos = True, doc_lens = lens)
+        xc, xw = data.tensor(data._xc, data._xw, _eos = True, lens = data._lens)
         _, y0 = data.tensor(None, data._y0)
         batch.append((xc, xw, y0))
     fo.close()

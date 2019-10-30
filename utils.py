@@ -24,7 +24,7 @@ def tokenize(x, norm = True):
 def save_data(filename, data):
     fo = open(filename, "w")
     for seq in data:
-        fo.write(" ".join(seq[0]) + "\t" + " ".join(seq[1]) + "\n")
+        fo.write((" ".join(seq[0]) + "\t" + " ".join(seq[1]) if seq else "") + "\n")
     fo.close()
 
 def load_tkn_to_idx(filename):
@@ -76,13 +76,6 @@ def save_checkpoint(filename, model, epoch, loss, time):
         torch.save(checkpoint, filename + ".epoch%d" % epoch)
         print("saved model at epoch %d" % epoch)
 
-def cudify(f):
-    return lambda *x: f(*x).cuda() if CUDA else f(*x)
-
-Tensor = cudify(torch.Tensor)
-LongTensor = cudify(torch.LongTensor)
-zeros = cudify(torch.zeros)
-
 class dataset():
     def __init__(self):
         self.idx = [] # input index
@@ -102,6 +95,7 @@ class dataset():
         self._xw = None
         self._y0 = None
         self._y1 = None
+        self._lens = None # document lengths
         self._prob = None
         self._attn = None
 
@@ -150,6 +144,7 @@ class dataset():
             self._x0 = self.x0[i:j]
             self._y0 = self.y0[i:j]
             self._y1 = [[] for _ in range(j - i)]
+            self._lens = [len(x) for x in self.xw[i:j]] if HRE else None
             self._prob = [Tensor([0]) for _ in range(j - i)]
             self._attn = [[] for _ in range(j - i)]
             if HRE:
@@ -162,12 +157,12 @@ class dataset():
                 self._xw = [list(*x) for x in self.xw[i:j]]
             yield
 
-    def tensor(self, bc, bw, _sos = False, _eos = False, doc_lens = None):
+    def tensor(self, bc, bw, _sos = False, _eos = False, lens = None):
         sos, eos, pad = [SOS_IDX], [EOS_IDX], [PAD_IDX]
-        if doc_lens:
-            d_len = max(doc_lens) # doc_len (Ld)
+        if lens:
+            d_len = max(lens) # doc_len (Ld)
             i, _bc, _bw = 0, [], []
-            for j in doc_lens:
+            for j in lens:
                 _bc.extend(bc[i:i + j] + [[pad]] * (d_len - j))
                 _bw.extend(bw[i:i + j] + [pad] * (d_len - j))
                 i += j

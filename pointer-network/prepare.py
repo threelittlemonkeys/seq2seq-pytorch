@@ -14,24 +14,23 @@ def load_data():
                 x, y = load_line(line, cti, wti)
                 if x and y:
                     data[-1].append((x, y))
-        for doc in sorted(data, key = lambda x: -len(x[0])):
+        for doc in sorted(data, key = lambda x: -len(x)):
             tmp.extend(doc)
-            tmp.append([])
-        print(data[-1])
+            tmp.append(None)
         data = tmp[:-1]
     else:
         for line in fo:
             line = line.strip()
             x, y = load_line(line, cti, wti)
             data.append((x, y))
-        data.sort(key = lambda x: -len(x[0]))
+        data.sort(key = lambda x: -len(x[0])) # sort by source sequence length
     fo.close()
     return data, cti, wti
 
 def load_line(line, cti, wti):
     x, y = line.split("\t")
     x = tokenize(x, UNIT)
-    y = [y] if HRE else y.split(" ")
+    y = [str(int(y) + 1)] if HRE else [str(int(x) + 1) for x in y.split(" ")] # PAD_IDX = 0
     if len(x) < MIN_LEN or len(x) > MAX_LEN:
         return None, None
     for w in x:

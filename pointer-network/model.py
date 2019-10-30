@@ -14,7 +14,7 @@ class ptrnet(nn.Module): # pointer networks
         b = y0.size(0) # batch size
         loss = 0
         self.zero_grad()
-        mask = None if HRE else maskset(xw) # TODO
+        mask = maskset(y0)
         self.dec.enc_out = self.enc(b, xc, xw, mask)
         self.dec.hidden = self.enc.hidden
         yc = LongTensor([[[SOS_IDX]]] * b)
@@ -61,6 +61,8 @@ class encoder(nn.Module):
     def forward(self, b, xc, xw, mask):
         self.hidden = self.init_state(b)
         x = self.embed(xc, xw)
+        if HRE: # [B * doc_len, 1, H] -> [B, doc_len, H]
+            x = x.view(b, -1, EMBED_SIZE)
         x = nn.utils.rnn.pack_padded_sequence(x, mask[1], batch_first = True)
         h, _ = self.rnn(x, self.hidden)
         h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first = True)
