@@ -61,9 +61,13 @@ def run_model(model, data):
     for _ in data.split():
         b, t = len(data._x0), 0 # batch size, time step
         eos = [False for _ in data._x0] # EOS states
-        xc, xw = data.tensor(data._xc, data._xw, _eos = True, lens = data._lens)
+        xc, xw = data.tensor(data._xc, data._xw, eos = True, lens = data._lens)
+        print(xw)
+        print(xw.size())
+        print(data._x0)
+        exit()
         mask = None if HRE else maskset(xw) # TODO
-        model.dec.enc_out = model.enc(b, xc, xw, mask)
+        model.dec.enc_out = model.enc(b, xc, xw, data._lens)
         model.dec.hidden = model.enc.hidden
         yc = LongTensor([[[SOS_IDX]]] * b)
         yw = LongTensor([[SOS_IDX]] * b)
@@ -85,7 +89,7 @@ def run_model(model, data):
             print("heatmap[%d] =" % (i // BEAM_SIZE)) # TODO
             print(mat2csv(x, rh = True))
     for i, (x0, y0, y1) in enumerate(zip(data.x0, data.y0, data.y1)):
-        if i % BEAM_SIZE:
+        if i % BEAM_SIZE: # use the best candidate from each beam
             continue
         y1.pop() # remove EOS token
         if HRE:

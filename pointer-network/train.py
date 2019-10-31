@@ -24,7 +24,7 @@ def load_data():
             data.append_row()
     data.strip()
     for _ in data.split():
-        xc, xw = data.tensor(data._xc, data._xw, _eos = True, lens = data._lens)
+        xc, xw = data.tensor(data._xc, data._xw, eos = True, lens = data._lens)
         _, y0 = data.tensor(None, data._y0)
         batch.append((xc, xw, y0))
     fo.close()

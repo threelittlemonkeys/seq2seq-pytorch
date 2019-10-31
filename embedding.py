@@ -115,17 +115,12 @@ class embed(nn.Module):
             self.layers = nn.ModuleList([self.layer(dim) for _ in range(num_layers)])
 
         def forward(self, x):
-            mask = self.maskset(x)
+            mask = x.eq(PAD_IDX).view(x.size(0), 1, 1, -1)
             x = self.embed(x)
             h = x + self.pe[:x.size(1)]
             for layer in self.layers:
-                h = layer(h, mask[0])
+                h = layer(h, mask)
             return h
-
-        @staticmethod
-        def maskset(x): # set of mask and lengths
-            mask = x.eq(PAD_IDX)
-            return (mask.view(x.size(0), 1, 1, -1), x.size(1) - mask.sum(1))
 
         @staticmethod
         def pos_encoding(dim, maxlen = 1000): # positional encoding
@@ -174,7 +169,7 @@ class embed(nn.Module):
                 return a # attention weights
 
             def forward(self, q, k, v, mask):
-                b = x.size(0) # batch_size (B)
+                b = q.size(0) # batch_size (B)
                 x = q # identity
                 q = self.Wq(q).view(b, -1, self.H, self.Dk).transpose(1, 2)
                 k = self.Wk(k).view(b, -1, self.H, self.Dk).transpose(1, 2)

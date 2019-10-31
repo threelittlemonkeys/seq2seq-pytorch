@@ -95,7 +95,7 @@ class dataset():
         self._xw = None
         self._y0 = None
         self._y1 = None
-        self._lens = None # document lengths
+        self._lens = None
         self._prob = None
         self._attn = None
 
@@ -125,12 +125,14 @@ class dataset():
     def sort(self):
         self.idx = list(range(len(self.x0)))
         self.idx.sort(key = lambda x: -len(self.xw[x] if HRE else self.xw[x][0]))
+        self.x0 = [self.x0[i] for i in self.idx]
         self.x1 = [self.x1[i] for i in self.idx]
         self.xc = [self.xc[i] for i in self.idx]
         self.xw = [self.xw[i] for i in self.idx]
 
     def unsort(self):
         self.idx = sorted(range(len(self.x0)), key = lambda x: self.idx[x])
+        self.x0 = [self.x0[i] for i in self.idx]
         self.x1 = [self.x1[i] for i in self.idx]
         self.xc = [self.xc[i] for i in self.idx]
         self.xw = [self.xw[i] for i in self.idx]
@@ -157,25 +159,25 @@ class dataset():
                 self._xw = [list(*x) for x in self.xw[i:j]]
             yield
 
-    def tensor(self, bc, bw, _sos = False, _eos = False, lens = None):
-        sos, eos, pad = [SOS_IDX], [EOS_IDX], [PAD_IDX]
+    def tensor(self, bc, bw, sos = False, eos = False, lens = None):
+        _s, _e, _p = [SOS_IDX], [EOS_IDX], [PAD_IDX]
         if lens:
             d_len = max(lens) # doc_len (Ld)
             i, _bc, _bw = 0, [], []
             for j in lens:
-                _bc.extend(bc[i:i + j] + [[pad]] * (d_len - j))
-                _bw.extend(bw[i:i + j] + [pad] * (d_len - j))
+                _bc.extend(bc[i:i + j] + [[_p]] * (d_len - j))
+                _bw.extend(bw[i:i + j] + [_p] * (d_len - j))
                 i += j
             bc, bw = _bc, _bw
         if bw:
             s_len = max(map(len, bw)) # sent_len (Ls)
-            bw = [sos * _sos + x + eos * _eos + pad * (s_len - len(x)) for x in bw]
+            bw = [_s * sos + x + _e * eos + _p * (s_len - len(x)) for x in bw]
             bw = LongTensor(bw) # [B * Ld, Ls]
         if bc:
             w_len = max(max(map(len, x)) for x in bc) # word_len (Lw)
-            w_pad = [pad * (w_len + 2)]
-            bc = [[sos + w + eos + pad * (w_len - len(w)) for w in x] for x in bc]
-            bc = [w_pad * _sos + x + w_pad * (s_len - len(x) + _eos) for x in bc]
+            w_pad = [_p * (w_len + 2)]
+            bc = [[_s + w + _e + _p * (w_len - len(w)) for w in x] for x in bc]
+            bc = [w_pad * sos + x + w_pad * (s_len - len(x) + eos) for x in bc]
             bc = LongTensor(bc) # [B * Ld, Ls, Lw]
         return bc, bw
 
@@ -194,7 +196,8 @@ def batchify(bxc, bxw, sos = False, eos = False, minlen = 0):
 
 def maskset(x):
     mask = x.eq(PAD_IDX)
-    return (mask, x.size(1) - mask.sum(1)) # tuple of mask and lengths
+    lens = x.size(1) - mask.sum(1)
+    return mask, lens
 
 def mat2csv(m, ch = True, rh = False, nd = 4, delim ="\t"):
     f = "%%.%df" % nd

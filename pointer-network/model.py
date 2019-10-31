@@ -14,8 +14,8 @@ class ptrnet(nn.Module): # pointer networks
         b = y0.size(0) # batch size
         loss = 0
         self.zero_grad()
-        mask = maskset(y0)
-        self.dec.enc_out = self.enc(b, xc, xw, mask)
+        mask, lens = maskset(y0)
+        self.dec.enc_out = self.enc(b, xc, xw, lens)
         self.dec.hidden = self.enc.hidden
         yc = LongTensor([[[SOS_IDX]]] * b)
         yw = LongTensor([[SOS_IDX]] * b)
@@ -58,12 +58,12 @@ class encoder(nn.Module):
             return (hs, cs)
         return hs
 
-    def forward(self, b, xc, xw, mask):
+    def forward(self, b, xc, xw, lens):
         self.hidden = self.init_state(b)
         x = self.embed(xc, xw)
         if HRE: # [B * doc_len, 1, H] -> [B, doc_len, H]
             x = x.view(b, -1, EMBED_SIZE)
-        x = nn.utils.rnn.pack_padded_sequence(x, mask[1], batch_first = True)
+        x = nn.utils.rnn.pack_padded_sequence(x, lens, batch_first = True)
         h, _ = self.rnn(x, self.hidden)
         h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first = True)
         return h
@@ -91,7 +91,7 @@ class decoder(nn.Module):
     def forward(self, xc, xw, mask):
         x = self.embed(xc, xw)
         h, _ = self.rnn(x, self.hidden)
-        h = self.attn(h, self.enc_out, mask[0])
+        h = self.attn(h, self.enc_out, mask)
         return h
 
 class attn(nn.Module): # content based input attention
