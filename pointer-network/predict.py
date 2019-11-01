@@ -9,20 +9,20 @@ def load_model():
     load_checkpoint(sys.argv[1], model)
     return model, cti, wti
 
-def greedy_search(dec, data, eos, mask):
+def greedy_search(dec, batch, eos, lens):
     bp, by = dec.dec_out.topk(1)
     y = by.view(-1).tolist()
     for i, _ in filter(lambda x: not x[1], enumerate(eos)):
-        j = mask[1][i] # sequence length
-        eos[i] = (y[i] == j - 1 or y[i] in data._y1[i])
-        data._y1[i].append(y[i])
-        data._prob[i] += bp[i]
-        data._attn[i].append([y[i], *dec.attn.a[i, :j].exp()])
+        j = lens[i] # sequence length
+        eos[i] = (y[i] == j - 1 or y[i] in batch.y1[i])
+        batch.y1[i].append(y[i])
+        batch.prob[i] += bp[i]
+        batch.attn[i].append([y[i], *dec.attn.a[i, :j].exp()])
     return by
 
-def beam_search(dec, data, eos, mask, t):
+def beam_search(dec, batch, eos, lens, t):
     bp, by = dec.dec_out.topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
-    bp += Tensor([-10000 if b else a for a, b in zip(data._prob, eos)]).unsqueeze(1)
+    bp += Tensor([-10000 if b else a for a, b in zip(batch.prob, eos)]).unsqueeze(1)
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
     by = by.view(-1, BEAM_SIZE ** 2)
     if t == 0: # remove non-first duplicate beams
@@ -35,53 +35,57 @@ def beam_search(dec, data, eos, mask, t):
             print()
             for k in range(0, len(p), BEAM_SIZE): # for each beam
                 q = j + k // BEAM_SIZE
-                w = [(data._y1[q], data._prob[q])] # previous token
+                w = [(batch.y1[q], batch.prob[q])] # previous token
                 w += list(zip(y, p))[k:k + BEAM_SIZE] # current candidates
                 w = [(a, round(b.item(), 4)) for a, b in w]
                 print("beam[%d][%d][%d] =" % (i, t, k // BEAM_SIZE), w[0], "->", *w[1:])
         for p, k in zip(*p.topk(BEAM_SIZE)): # n-best candidates
             q = j + k // BEAM_SIZE
-            _y.append(data._y1[q] + [y[k]])
-            _p.append(data._prob[q] + p)
-            _a.append(data._attn[q] + [[y[k], *dec.attn.a[q][:mask[1][q]].exp()]])
+            _y.append(batch.y1[q] + [y[k]])
+            _p.append(batch.prob[q] + p)
+            _a.append(batch.attn[q] + [[y[k], *dec.attn.a[q][:lens[q]].exp()]])
         for k in filter(lambda x: eos[j + x], range(BEAM_SIZE)): # completed sequences
-            _y.append(data._y1[j + k])
-            _p.append(data._prob[j + k])
-            _a.append(data._attn[j + k])
+            _y.append(batch.y1[j + k])
+            _p.append(batch.prob[j + k])
+            _a.append(batch.attn[j + k])
         topk = sorted(zip(_y, _p, _a), key = lambda x: -x[1])[:BEAM_SIZE]
         for k, (y, p, a) in enumerate(topk, j):
-            eos[k] = (y[-1] == mask[1][j] - 1 or y[-1] in y[:-1])
-            data._y1[k], data._prob[k], data._attn[k] = y, p, a
+            eos[k] = (y[-1] == lens[j] - 1 or y[-1] in y[:-1])
+            batch.y1[k], batch.prob[k], batch.attn[k] = y, p, a
             if VERBOSE >= 2:
                 print("best[%d] =" % (k - j), (y, round(p.item(), 4)))
-    return LongTensor([next(reversed(x), SOS_IDX) for x in data._y1]).unsqueeze(1)
+    return LongTensor([next(reversed(x), SOS_IDX) for x in batch.y1]).unsqueeze(1)
 
 def run_model(model, data):
     data.sort()
-    for _ in data.split():
-        b, t = len(data._x0), 0 # batch size, time step
-        eos = [False for _ in data._x0] # EOS states
-        xc, xw = data.tensor(data._xc, data._xw, eos = True, lens = data._lens)
-        print(xw)
-        print(xw.size())
-        print(data._x0)
-        exit()
-        mask = None if HRE else maskset(xw) # TODO
-        model.dec.enc_out = model.enc(b, xc, xw, data._lens)
+    for batch in data.split():
+        print(batch.x1)
+        b, t = len(batch.x0), 0 # batch size, time step
+        xc, xw = data.tensor(batch.xc, batch.xw, batch.lens, eos = True)
+        eos = [False for _ in batch.x0] # EOS states
+        mask, lens = maskset(batch.lens if HRE else xw)
+        model.dec.enc_out = model.enc(b, xc, xw, lens)
         model.dec.hidden = model.enc.hidden
         yc = LongTensor([[[SOS_IDX]]] * b)
         yw = LongTensor([[SOS_IDX]] * b)
-        for i, x in enumerate(data._x1): # attention heatmap column headers
-            data._attn[i].append(["", *x, EOS])
+        print(batch.lens)
+        for i in range(len(batch.lens)): # attention heatmap column headers
+            batch.attn[i].append(["", *(range(batch.lens[i]) if HRE else x), EOS])
+        '''
+        for i, x in enumerate(batch.x1): # attention heatmap column headers
+            batch.attn[i].append(["", *(range(batch.lens[i]) if HRE else x), EOS])
+        '''
+        print(batch.attn)
+        exit()
         while sum(eos) < len(eos) and t < MAX_LEN:
             model.dec.dec_out = model.dec(yc, yw, mask)
-            args = (model.dec, data, eos, mask)
+            args = (model.dec, batch, eos, lens)
             yw = greedy_search(*args) if BEAM_SIZE == 1 else beam_search(*args, t)
             yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).unsqueeze(1)
             t += 1
-        data.y1.extend(data._y1)
-        data.prob.extend(data._prob)
-        data.attn.extend(data._attn)
+        data.y1.extend(batch.y1)
+        data.prob.extend(batch.prob)
+        data.attn.extend(batch.attn)
     data.unsort()
     if VERBOSE:
         print()
@@ -116,6 +120,7 @@ def predict(filename, model, cti, wti):
             for _ in range(BEAM_SIZE - 1):
                 data.append_row()
                 data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
+                # TODO
             data.append_row()
     fo.close()
     data.strip()

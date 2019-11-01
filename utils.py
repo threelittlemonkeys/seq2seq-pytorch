@@ -78,26 +78,22 @@ def save_checkpoint(filename, model, epoch, loss, time):
 
 class dataset():
     def __init__(self):
-        self.idx = [] # input index
-        self.x0 = [[]] # raw input
-        self.x1 = [[]] # tokenized input
-        self.xc = [[]] # indexed input, character-level
-        self.xw = [[]] # indexed input, word-level
-        self.y0 = [[]] # actual output
-        self.y1 = [] # predicted output
-        self.prob = [] # probability
-        self.attn = [] # attention heatmap
+        data = self.data()
+        for a, b in data.__dict__.items():
+            setattr(self, a, b)
 
-        # batch
-        self._x0 = None
-        self._x1 = None
-        self._xc = None
-        self._xw = None
-        self._y0 = None
-        self._y1 = None
-        self._lens = None
-        self._prob = None
-        self._attn = None
+    class data():
+        def __init__(self):
+            self.idx = None # input index
+            self.x0 = [[]] # raw input
+            self.x1 = [[]] # tokenized input
+            self.xc = [[]] # indexed input, character-level
+            self.xw = [[]] # indexed input, word-level
+            self.y0 = [[]] # actual output
+            self.y1 = [] # predicted output
+            self.lens = None # document lengths
+            self.prob = [] # probability
+            self.attn = [] # attention heatmap
 
     def append_item(self, x0 = None, x1 = None, xc = None, xw = None, y0 = None):
         if x0: self.x0[-1].append(x0)
@@ -142,31 +138,38 @@ class dataset():
 
     def split(self): # split into batches
         for i in range(0, len(self.y0), BATCH_SIZE):
+            batch = self.data()
             j = i + min(BATCH_SIZE, len(self.x0) - i)
-            self._x0 = self.x0[i:j]
-            self._y0 = self.y0[i:j]
-            self._y1 = [[] for _ in range(j - i)]
-            self._lens = [len(x) for x in self.xw[i:j]] if HRE else None
-            self._prob = [Tensor([0]) for _ in range(j - i)]
-            self._attn = [[] for _ in range(j - i)]
+            batch.x0 = self.x0[i:j]
+            batch.y0 = self.y0[i:j]
+            batch.y1 = [[] for _ in range(j - i)]
+            batch.lens = [len(x) if HRE else 1 for x in self.xw[i:j]]
+            batch.prob = [Tensor([0]) for _ in range(j - i)]
+            batch.attn = [[] for _ in range(j - i)]
             if HRE:
-                self._x1 = [list(x) for x in self.x1[i:j] for x in x]
-                self._xc = [list(x) for x in self.xc[i:j] for x in x]
-                self._xw = [list(x) for x in self.xw[i:j] for x in x]
+                batch.x1 = [list(x) for x in self.x1[i:j] for x in x]
+                batch.xc = [list(x) for x in self.xc[i:j] for x in x]
+                batch.xw = [list(x) for x in self.xw[i:j] for x in x]
             else:
-                self._x1 = [list(*x) for x in self.x1[i:j]]
-                self._xc = [list(*x) for x in self.xc[i:j]]
-                self._xw = [list(*x) for x in self.xw[i:j]]
-            yield
+                batch.x1 = [list(*x) for x in self.x1[i:j]]
+                batch.xc = [list(*x) for x in self.xc[i:j]]
+                batch.xw = [list(*x) for x in self.xw[i:j]]
+            yield batch
 
-    def tensor(self, bc, bw, sos = False, eos = False, lens = None):
+    def tensor(self, bc, bw, lens = [1], sos = False, eos = False):
+        d_len = max(lens) # doc_len (Ld)
         _s, _e, _p = [SOS_IDX], [EOS_IDX], [PAD_IDX]
-        if lens:
-            d_len = max(lens) # doc_len (Ld)
+        if d_len > 1:
             i, _bc, _bw = 0, [], []
             for j in lens:
-                _bc.extend(bc[i:i + j] + [[_p]] * (d_len - j))
-                _bw.extend(bw[i:i + j] + [_p] * (d_len - j))
+                if sos:
+                    _bc.append([[]])
+                    _bw.append([])
+                _bc.extend(bc[i:i + j] + [[[]] for _ in range(d_len - j)])
+                _bw.extend(bw[i:i + j] + [[] for _ in range(d_len - j)])
+                if eos:
+                    _bc.append([[]])
+                    _bw.append([])
                 i += j
             bc, bw = _bc, _bw
         if bw:
@@ -195,9 +198,11 @@ def batchify(bxc, bxw, sos = False, eos = False, minlen = 0):
     return bxc, LongTensor(bxw)
 
 def maskset(x):
-    mask = x.eq(PAD_IDX)
-    lens = x.size(1) - mask.sum(1)
-    return mask, lens
+    if type(x) == torch.Tensor:
+        mask = x.eq(PAD_IDX)
+        lens = x.size(1) - mask.sum(1)
+        return mask, lens
+    return (Tensor([[True] * i + [PAD_IDX] * (x[0] - i) for i in x]), x)
 
 def mat2csv(m, ch = True, rh = False, nd = 4, delim ="\t"):
     f = "%%.%df" % nd

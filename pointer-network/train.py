@@ -23,9 +23,9 @@ def load_data():
                 data.append_item(xc = xc, xw = xw, y0 = y)
             data.append_row()
     data.strip()
-    for _ in data.split():
-        xc, xw = data.tensor(data._xc, data._xw, eos = True, lens = data._lens)
-        _, y0 = data.tensor(None, data._y0)
+    for _batch in data.split():
+        xc, xw = data.tensor(_batch.xc, _batch.xw, _batch.lens, eos = True)
+        _, y0 = data.tensor(None, _batch.y0)
         batch.append((xc, xw, y0))
     fo.close()
     print("data size: %d" % (len(batch) * BATCH_SIZE))
