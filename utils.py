@@ -96,10 +96,10 @@ class dataset():
             self.attn = [] # attention heatmap
 
     def append_item(self, x0 = None, x1 = None, xc = None, xw = None, y0 = None):
-        if x0: self.x0[-1].append(x0)
-        if x1: self.x1[-1].append(x1)
-        if xc: self.xc[-1].append(xc)
-        if xw: self.xw[-1].append(xw)
+        if x0: self.x0[-1].extend(x0)
+        if x1: self.x1[-1].extend(x1)
+        if xc: self.xc[-1].extend(xc)
+        if xw: self.xw[-1].extend(xw)
         if y0: self.y0[-1].extend(y0)
 
     def append_row(self):
@@ -202,16 +202,17 @@ def maskset(x):
         mask = x.eq(PAD_IDX)
         lens = x.size(1) - mask.sum(1)
         return mask, lens
-    return (Tensor([[True] * i + [PAD_IDX] * (x[0] - i) for i in x]), x)
+    mask = Tensor([[1] * i + [PAD_IDX] * (x[0] - i) for i in x]).eq(PAD_IDX)
+    return mask, x
 
-def mat2csv(m, ch = True, rh = False, nd = 4, delim ="\t"):
-    f = "%%.%df" % nd
+def mat2csv(m, ch = True, rh = False, delim ="\t"):
+    v = "%%.%df" % NUM_DIGITS
     if ch: # column header
-        csv = delim.join([x for x in m[0]]) + "\n" # source sequence
+        csv = delim.join(map(str, m[0])) + "\n" # source sequence
     for row in m[ch:]:
         if rh: # row header
             csv += str(row[0]) + delim # target sequence
-        csv += delim.join([f % x for x in row[rh:]]) + "\n"
+        csv += delim.join([v % x for x in row[rh:]]) + "\n"
     return csv
 
 def f1(p, r):

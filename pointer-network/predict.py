@@ -17,7 +17,7 @@ def greedy_search(dec, batch, eos, lens):
         eos[i] = (y[i] == j - 1 or y[i] in batch.y1[i])
         batch.y1[i].append(y[i])
         batch.prob[i] += bp[i]
-        batch.attn[i].append([y[i], *dec.attn.a[i, :j].exp()])
+        batch.attn[i].append([y[i], *dec.attn.w[i, :j].exp()])
     return by
 
 def beam_search(dec, batch, eos, lens, t):
@@ -43,7 +43,7 @@ def beam_search(dec, batch, eos, lens, t):
             q = j + k // BEAM_SIZE
             _y.append(batch.y1[q] + [y[k]])
             _p.append(batch.prob[q] + p)
-            _a.append(batch.attn[q] + [[y[k], *dec.attn.a[q][:lens[q]].exp()]])
+            _a.append(batch.attn[q] + [[y[k], *dec.attn.w[q][:lens[q]].exp()]])
         for k in filter(lambda x: eos[j + x], range(BEAM_SIZE)): # completed sequences
             _y.append(batch.y1[j + k])
             _p.append(batch.prob[j + k])
@@ -59,7 +59,6 @@ def beam_search(dec, batch, eos, lens, t):
 def run_model(model, data):
     data.sort()
     for batch in data.split():
-        print(batch.x1)
         b, t = len(batch.x0), 0 # batch size, time step
         xc, xw = data.tensor(batch.xc, batch.xw, batch.lens, eos = True)
         eos = [False for _ in batch.x0] # EOS states
@@ -68,15 +67,8 @@ def run_model(model, data):
         model.dec.hidden = model.enc.hidden
         yc = LongTensor([[[SOS_IDX]]] * b)
         yw = LongTensor([[SOS_IDX]] * b)
-        print(batch.lens)
         for i in range(len(batch.lens)): # attention heatmap column headers
-            batch.attn[i].append(["", *(range(batch.lens[i]) if HRE else x), EOS])
-        '''
-        for i, x in enumerate(batch.x1): # attention heatmap column headers
-            batch.attn[i].append(["", *(range(batch.lens[i]) if HRE else x), EOS])
-        '''
-        print(batch.attn)
-        exit()
+            batch.attn[i].append(["", *(range(batch.lens[i]) if HRE else batch.x1[i]), EOS])
         while sum(eos) < len(eos) and t < MAX_LEN:
             model.dec.dec_out = model.dec(yc, yw, mask)
             args = (model.dec, batch, eos, lens)
@@ -90,23 +82,23 @@ def run_model(model, data):
     if VERBOSE:
         print()
         for i, x in filter(lambda x: not x[0] % BEAM_SIZE, enumerate(data.attn)):
-            print("heatmap[%d] =" % (i // BEAM_SIZE)) # TODO
+            print("attn[%d] =" % (i // BEAM_SIZE))
             print(mat2csv(x, rh = True))
     for i, (x0, y0, y1) in enumerate(zip(data.x0, data.y0, data.y1)):
         if i % BEAM_SIZE: # use the best candidate from each beam
             continue
         y1.pop() # remove EOS token
         if HRE:
-            pass
+            yield x0, y0, y1
         else:
             yield x0, y0, y1
 
 def predict(filename, model, cti, wti):
     data = dataset()
-    fo = open(filename)
-    for line in fo:
-        x0 = line.strip()
-        if x0:
+    with open(filename) as fo:
+        text = fo.read().strip().split("\n" * (HRE + 1))
+    for block in text:
+        for x0 in block.split("\n"):
             if re.match("[^\t]+\t[0-9]+( [0-9]+)*$", x0):
                 x0, y0 = x0.split("\t")
                 y0 = [int(x) for x in y0.split(" ")]
@@ -115,14 +107,12 @@ def predict(filename, model, cti, wti):
             x1 = tokenize(x0)
             xc = [[cti[c] if c in cti else UNK_IDX for c in w] for w in x1]
             xw = [wti[w] if w in wti else UNK_IDX for w in x1]
-            data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
-        if not (HRE and x0): # delimiters (\n, \n\n)
-            for _ in range(BEAM_SIZE - 1):
-                data.append_row()
-                data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
-                # TODO
+            data.append_item(x0 = [x0], x1 = [x1], xc = [xc], xw = [xw], y0 = y0)
+        x0, x1, xc, xw, y0 = data.x0[-1], data.x1[-1], data.xc[-1], data.xw[-1], data.y0[-1]
+        for _ in range(BEAM_SIZE - 1):
             data.append_row()
-    fo.close()
+            data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
+        data.append_row()
     data.strip()
     with torch.no_grad():
         model.eval()

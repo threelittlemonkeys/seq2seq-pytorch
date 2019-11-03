@@ -97,7 +97,7 @@ class decoder(nn.Module):
 class attn(nn.Module): # content based input attention
     def __init__(self):
         super().__init__()
-        self.a = None # attention weights (for heatmap)
+        self.w = None # attention weights (for visualization)
 
         # architecture
         self.w1 = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
@@ -108,6 +108,5 @@ class attn(nn.Module): # content based input attention
     def forward(self, ht, hs, mask):
         a = self.v(torch.tanh(self.w1(hs) + self.w2(ht))) # [B, L, H] -> [B, L, 1]
         a = a.squeeze(2).masked_fill(mask, -10000) # masking in log space
-        a = self.softmax(a)
-        self.a = a
-        return a # attention weights
+        self.w = self.softmax(a)
+        return self.w # attention weights

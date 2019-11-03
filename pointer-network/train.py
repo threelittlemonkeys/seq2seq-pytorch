@@ -8,26 +8,28 @@ def load_data():
     cti = load_tkn_to_idx(sys.argv[2]) # char_to_idx
     wti = load_tkn_to_idx(sys.argv[3]) # word_to_idx
     print("loading %s..." % sys.argv[4])
-    fo = open(sys.argv[4], "r")
-    for line in fo:
-        line = line.strip()
-        if line:
+    with open(sys.argv[4], "r") as fo:
+        text = fo.read().strip().split("\n" * (HRE + 1))
+    for block in text:
+        for line in block.split("\n"):
             x, y = line.split("\t")
             x = [x.split(":") for x in x.split(" ")]
             y = [int(y)] if HRE else [int(x) for x in y.split(" ")] + [len(x)]
             xc, xw = zip(*[(list(map(int, xc.split("+"))), int(xw)) for xc, xw in x])
-            data.append_item(xc = xc, xw = xw, y0 = y)
-        if not (HRE and line): # delimiters (\n, \n\n)
-            if HRE:
-                xc, xw, y = [[EOS_IDX]], [EOS_IDX], [len(data.y0[-1]) + 1]
-                data.append_item(xc = xc, xw = xw, y0 = y)
-            data.append_row()
+            data.append_item(xc = [xc], xw = [xw], y0 = y)
+        '''
+        if HRE:
+            xc, xw, y = [[EOS_IDX]], [EOS_IDX], [len(data.y0[-1]) + 1]
+            data.append_item(xc = [xc], xw = [xw], y0 = y)
+        '''
+        data.append_row()
     data.strip()
     for _batch in data.split():
         xc, xw = data.tensor(_batch.xc, _batch.xw, _batch.lens, eos = True)
+        print(xw)
+        exit()
         _, y0 = data.tensor(None, _batch.y0)
         batch.append((xc, xw, y0))
-    fo.close()
     print("data size: %d" % (len(batch) * BATCH_SIZE))
     print("batch size: %d" % BATCH_SIZE)
     return batch, cti, wti

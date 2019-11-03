@@ -16,8 +16,8 @@ EMBED_SIZE = sum(EMBED.values())
 HIDDEN_SIZE = 1000
 DROPOUT = 0.5
 LEARNING_RATE = 1e-4
-BEAM_SIZE = 3
-VERBOSE = 0 # 0: None, 1: attention heatmap, 2: beam search
+BEAM_SIZE = 1
+VERBOSE = 2 # 0: None, 1: attention heatmap, 2: beam search
 EVAL_EVERY = 10
 SAVE_EVERY = 10
 
