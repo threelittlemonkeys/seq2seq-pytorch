@@ -17,17 +17,10 @@ def load_data():
             y = [int(y)] if HRE else [int(x) for x in y.split(" ")] + [len(x)]
             xc, xw = zip(*[(list(map(int, xc.split("+"))), int(xw)) for xc, xw in x])
             data.append_item(xc = [xc], xw = [xw], y0 = y)
-        '''
-        if HRE:
-            xc, xw, y = [[EOS_IDX]], [EOS_IDX], [len(data.y0[-1]) + 1]
-            data.append_item(xc = [xc], xw = [xw], y0 = y)
-        '''
         data.append_row()
     data.strip()
     for _batch in data.split():
         xc, xw = data.tensor(_batch.xc, _batch.xw, _batch.lens, eos = True)
-        print(xw)
-        exit()
         _, y0 = data.tensor(None, _batch.y0)
         batch.append((xc, xw, y0))
     print("data size: %d" % (len(batch) * BATCH_SIZE))

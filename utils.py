@@ -157,8 +157,8 @@ class dataset():
             yield batch
 
     def tensor(self, bc, bw, lens = [1], sos = False, eos = False):
-        d_len = max(lens) # doc_len (Ld)
-        _s, _e, _p = [SOS_IDX], [EOS_IDX], [PAD_IDX]
+        d_len = max(lens) # document length (Ld)
+        _p, _s, _e = [PAD_IDX], [SOS_IDX], [EOS_IDX]
         if d_len > 1:
             i, _bc, _bw = 0, [], []
             for j in lens:
@@ -173,18 +173,18 @@ class dataset():
                 i += j
             bc, bw = _bc, _bw
         if bw:
-            s_len = max(map(len, bw)) # sent_len (Ls)
+            s_len = max(map(len, bw)) # sentence length (Ls)
             bw = [_s * sos + x + _e * eos + _p * (s_len - len(x)) for x in bw]
             bw = LongTensor(bw) # [B * Ld, Ls]
         if bc:
-            w_len = max(max(map(len, x)) for x in bc) # word_len (Lw)
+            w_len = max(max(map(len, x)) for x in bc) # word length (Lw)
             w_pad = [_p * (w_len + 2)]
             bc = [[_s + w + _e + _p * (w_len - len(w)) for w in x] for x in bc]
             bc = [w_pad * sos + x + w_pad * (s_len - len(x) + eos) for x in bc]
             bc = LongTensor(bc) # [B * Ld, Ls, Lw]
         return bc, bw
 
-def batchify(bxc, bxw, sos = False, eos = False, minlen = 0):
+def batchify(bxc, bxw, sos = False, eos = False, minlen = 0): # TODO
     bxw_len = max(minlen, max(len(x) for x in bxw))
     if bxc:
         bxc_len = max(minlen, max(len(w) for x in bxc for w in x))

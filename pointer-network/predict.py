@@ -62,7 +62,7 @@ def run_model(model, data):
         b, t = len(batch.x0), 0 # batch size, time step
         xc, xw = data.tensor(batch.xc, batch.xw, batch.lens, eos = True)
         eos = [False for _ in batch.x0] # EOS states
-        mask, lens = maskset(batch.lens if HRE else xw)
+        mask, lens = maskset([x + 1 for x in batch.lens] if HRE else xw)
         model.dec.enc_out = model.enc(b, xc, xw, lens)
         model.dec.hidden = model.enc.hidden
         yc = LongTensor([[[SOS_IDX]]] * b)
@@ -85,12 +85,8 @@ def run_model(model, data):
             print("attn[%d] =" % (i // BEAM_SIZE))
             print(mat2csv(x, rh = True))
     for i, (x0, y0, y1) in enumerate(zip(data.x0, data.y0, data.y1)):
-        if i % BEAM_SIZE: # use the best candidate from each beam
-            continue
-        y1.pop() # remove EOS token
-        if HRE:
-            yield x0, y0, y1
-        else:
+        if not i % BEAM_SIZE: # use the best candidate from each beam
+            y1.pop() # remove EOS token
             yield x0, y0, y1
 
 def predict(filename, model, cti, wti):
