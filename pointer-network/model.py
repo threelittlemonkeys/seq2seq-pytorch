@@ -14,7 +14,7 @@ class ptrnet(nn.Module): # pointer networks
         b = y0.size(0) # batch size
         loss = 0
         self.zero_grad()
-        mask, lens = maskset(y0)
+        mask, lens = maskset(y0 if HRE else xw)
         self.dec.enc_out = self.enc(b, xc, xw, lens)
         self.dec.hidden = self.enc.hidden
         yc = LongTensor([[[SOS_IDX]]] * b)
