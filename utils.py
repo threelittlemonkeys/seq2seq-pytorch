@@ -143,7 +143,7 @@ class dataset():
             batch.x0 = self.x0[i:j]
             batch.y0 = self.y0[i:j]
             batch.y1 = [[] for _ in range(j - i)]
-            batch.lens = [len(x) if HRE else 1 for x in self.xw[i:j]]
+            batch.lens = [len(x) for x in self.xw[i:j]]
             batch.prob = [Tensor([0]) for _ in range(j - i)]
             batch.attn = [[] for _ in range(j - i)]
             if HRE:
@@ -156,10 +156,10 @@ class dataset():
                 batch.xw = [list(*x) for x in self.xw[i:j]]
             yield batch
 
-    def tensor(self, bc, bw, lens = [1], sos = False, eos = False):
-        d_len = max(lens) # document length (Ld)
+    def tensor(self, bc, bw, lens = None, sos = False, eos = False):
         _p, _s, _e = [PAD_IDX], [SOS_IDX], [EOS_IDX]
-        if d_len > 1:
+        if HRE and lens:
+            d_len = max(lens) # document length (Ld)
             i, _bc, _bw = 0, [], []
             for j in lens:
                 if sos:
@@ -184,7 +184,7 @@ class dataset():
             bc = LongTensor(bc) # [B * Ld, Ls, Lw]
         return bc, bw
 
-def batchify(bxc, bxw, sos = False, eos = False, minlen = 0): # TODO
+def batchify(bxc, bxw, sos = False, eos = False, minlen = 0):
     bxw_len = max(minlen, max(len(x) for x in bxw))
     if bxc:
         bxc_len = max(minlen, max(len(w) for x in bxc for w in x))
