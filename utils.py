@@ -76,7 +76,7 @@ def save_checkpoint(filename, model, epoch, loss, time):
         torch.save(checkpoint, filename + ".epoch%d" % epoch)
         print("saved model at epoch %d" % epoch)
 
-class dataset():
+class dataloader():
     def __init__(self):
         data = self.data()
         for a, b in data.__dict__.items():

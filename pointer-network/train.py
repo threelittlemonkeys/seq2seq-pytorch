@@ -3,7 +3,7 @@ from utils import *
 from evaluate import *
 
 def load_data():
-    data = dataset()
+    data = dataloader()
     batch = []
     cti = load_tkn_to_idx(sys.argv[2]) # char_to_idx
     wti = load_tkn_to_idx(sys.argv[3]) # word_to_idx

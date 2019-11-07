@@ -90,7 +90,7 @@ def run_model(model, data):
             yield x0, y0, y1
 
 def predict(filename, model, cti, wti):
-    data = dataset()
+    data = dataloader()
     with open(filename) as fo:
         text = fo.read().strip().split("\n" * (HRE + 1))
     for block in text:
