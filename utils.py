@@ -133,8 +133,8 @@ class dataloader():
         self.xc = [self.xc[i] for i in self.idx]
         self.xw = [self.xw[i] for i in self.idx]
         self.y1 = [self.y1[i] for i in self.idx]
-        self.prob = [self.prob[i] for i in self.idx]
-        self.attn = [self.attn[i] for i in self.idx]
+        if self.prob: self.prob = [self.prob[i] for i in self.idx]
+        if self.attn: self.attn = [self.attn[i] for i in self.idx]
 
     def split(self): # split into batches
         for i in range(0, len(self.y0), BATCH_SIZE):
