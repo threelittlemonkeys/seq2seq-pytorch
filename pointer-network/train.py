@@ -23,7 +23,7 @@ def load_data():
         xc, xw = data.tensor(_batch.xc, _batch.xw, _batch.lens, eos = True)
         _, y0 = data.tensor(None, _batch.y0)
         batch.append((xc, xw, y0))
-    print("data size: %d" % (len(batch) * BATCH_SIZE))
+    print("data size: %d" % (len(data.y0)))
     print("batch size: %d" % BATCH_SIZE)
     return batch, cti, wti
 

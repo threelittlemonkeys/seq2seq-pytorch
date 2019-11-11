@@ -1,13 +1,12 @@
 from model import *
 from utils import *
-# from evaluate import * # TODO
 
 def load_data():
-    bx = [] # source sequence batch
-    by = [] # target sequence batch
-    data = []
+    data = dataloader()
+    batch = []
     src_vocab = load_vocab(sys.argv[2])
     tgt_vocab = load_vocab(sys.argv[3])
+    # TODO
     print("loading %s..." % sys.argv[4])
     fo = open(sys.argv[4], "r")
     for line in fo:
@@ -29,7 +28,7 @@ def load_data():
 
 def train():
     print("cuda: %s" % CUDA)
-    num_epochs = int(sys.argv[5])
+    num_epochs = int(sys.argv[-1])
     data, src_vocab, tgt_vocab = load_data()
     model = rnn_enc_dec(len(src_vocab), len(tgt_vocab))
     enc_optim = torch.optim.Adam(model.enc.parameters(), lr = LEARNING_RATE)
@@ -55,6 +54,6 @@ def train():
             save_checkpoint(filename, model, ei, loss_sum, timer)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 6:
-        sys.exit("Usage: %s model vocab.src vocab.tgt training_data num_epoch" % sys.argv[0])
+    if len(sys.argv) != 7:
+        sys.exit("Usage: %s model vocab.src.char_to_idx vocab.src.word_to_idx vocab.tgt.word_to_idx training_data num_epoch" % sys.argv[0])
     train()

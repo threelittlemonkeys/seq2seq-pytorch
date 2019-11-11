@@ -7,7 +7,7 @@ from collections import defaultdict
 
 def normalize(x):
     # x = re.sub("[^ ,.?!a-zA-Z0-9\u3131-\u318E\uAC00-\uD7A3]+", " ", x)
-    # x = re.sub("(?=[,.?!])", " ", x)
+    x = re.sub("(?=[,.?!])", " ", x)
     x = re.sub("\s+", " ", x)
     x = re.sub("^ | $", "", x)
     x = x.lower()
