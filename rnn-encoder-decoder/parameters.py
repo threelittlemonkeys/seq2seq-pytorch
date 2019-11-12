@@ -10,10 +10,11 @@ RNN_TYPE = "LSTM" # LSTM or GRU
 NUM_DIRS = 2 # unidirectional: 1, bidirectional: 2
 NUM_LAYERS = 2
 BATCH_SIZE = 64 * 3 # BATCH_SIZE * BEAM_SIZE
+HRE = (UNIT == "sent") # hierarchical recurrent encoding
 EMBED = {"lookup": 300} # embeddings (char-cnn, char-rnn, lookup, sae)
 HIDDEN_SIZE = 1000
 DROPOUT = 0.5
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 2e-4
 BEAM_SIZE = 3
 VERBOSE = 2 # 0: None, 1: attention heatmap, 2: beam search
 EVAL_EVERY = 10
@@ -30,6 +31,12 @@ EOS_IDX = 2
 UNK_IDX = 3
 
 CUDA = torch.cuda.is_available()
+if CUDA:
+    Tensor = torch.cuda.FloatTensor
+    LongTensor = torch.cuda.LongTensor
+    zeros = lambda *x: torch.zeros(*x).cuda()
+    # torch.cuda.set_device(0)
 torch.manual_seed(0) # for reproducibility
 
+NUM_DIGITS = 4 # number of digits to print
 assert BATCH_SIZE % BEAM_SIZE == 0

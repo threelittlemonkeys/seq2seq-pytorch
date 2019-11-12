@@ -4,33 +4,32 @@ from utils import *
 def load_data():
     data = dataloader()
     batch = []
-    src_vocab = load_vocab(sys.argv[2])
-    tgt_vocab = load_vocab(sys.argv[3])
-    # TODO
-    print("loading %s..." % sys.argv[4])
-    fo = open(sys.argv[4], "r")
+    x_cti = load_tkn_to_idx(sys.argv[2]) # source char_to_idx
+    x_wti = load_tkn_to_idx(sys.argv[3]) # source word_to_idx
+    y_wti = load_tkn_to_idx(sys.argv[4]) # target word_to_idx
+    print("loading %s..." % sys.argv[5])
+    fo = open(sys.argv[5], "r")
     for line in fo:
         x, y = line.strip().split("\t")
-        x = [int(i) for i in x.split(" ")]
-        y = [int(i) for i in y.split(" ")]
-        bx.append(x)
-        by.append(y)
-        if len(by) == BATCH_SIZE:
-            _, bx = batchify(None, bx, eos = True)
-            _, by = batchify(None, by, eos = True)
-            data.append((bx, by))
-            bx = []
-            by = []
+        x = [x.split(":") for x in x.split(" ")]
+        y = [int(x) for x in y.split(" ")]
+        xc, xw = zip(*[(list(map(int, xc.split("+"))), int(xw)) for xc, xw in x])
+        data.append_item(xc = [xc], xw = [xw], y0 = y)
+        data.append_row()
     fo.close()
-    print("data size: %d" % (len(data) * BATCH_SIZE))
+    data.strip()
+    for _batch in data.split():
+        xc, xw = data.tensor(_batch.xc, _batch.xw, _batch.lens, eos = True)
+        _, y0 = data.tensor(None, _batch.y0, eos = True)
+        batch.append((xc, xw, y0))
+    print("data size: %d" % (len(data.y0)))
     print("batch size: %d" % BATCH_SIZE)
-    return data, src_vocab, tgt_vocab
+    return batch, x_cti, x_wti, y_wti
 
 def train():
-    print("cuda: %s" % CUDA)
     num_epochs = int(sys.argv[-1])
-    data, src_vocab, tgt_vocab = load_data()
-    model = rnn_enc_dec(len(src_vocab), len(tgt_vocab))
+    batch, x_cti, x_wti, y_itt = load_data()
+    model = rnn_enc_dec(len(x_cti), len(x_wti), len(y_itt))
     enc_optim = torch.optim.Adam(model.enc.parameters(), lr = LEARNING_RATE)
     dec_optim = torch.optim.Adam(model.dec.parameters(), lr = LEARNING_RATE)
     print(model)
@@ -40,8 +39,8 @@ def train():
     for ei in range(epoch + 1, epoch + num_epochs + 1):
         loss_sum = 0
         timer = time()
-        for x, y in data:
-            loss = model(x, y) # forward pass and compute loss
+        for xc, xw, y0 in batch:
+            loss = model(xc, xw, y0) # forward pass and compute loss
             loss.backward() # compute gradients
             enc_optim.step() # update encoder parameters
             dec_optim.step() # update decoder parameters

@@ -1,20 +1,20 @@
 from utils import *
 
 class embed(nn.Module):
-    def __init__(self, char_vocab_size, word_vocab_size, hre = False):
+    def __init__(self, cti_size, wti_size, hre = False):
         super().__init__()
         self.hre = hre # hierarchical recurrent encoding
 
         # architecture
         for model, dim in EMBED.items():
             if model == "char-cnn":
-                self.char_embed = self.cnn(char_vocab_size, dim)
+                self.char_embed = self.cnn(cti_size, dim)
             elif model == "char-rnn":
-                self.char_embed = self.rnn(char_vocab_size, dim)
+                self.char_embed = self.rnn(cti_size, dim)
             if model == "lookup":
-                self.word_embed = nn.Embedding(word_vocab_size, dim, padding_idx = PAD_IDX)
+                self.word_embed = nn.Embedding(wti_size, dim, padding_idx = PAD_IDX)
             elif model == "sae":
-                self.word_embed = self.sae(word_vocab_size, dim)
+                self.word_embed = self.sae(wti_size, dim)
         if self.hre:
             self.sent_embed = self.rnn(EMBED_SIZE, EMBED_SIZE, True)
         self = self.cuda() if CUDA else self

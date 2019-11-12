@@ -78,8 +78,7 @@ def save_checkpoint(filename, model, epoch, loss, time):
 
 class dataloader():
     def __init__(self):
-        data = self.data()
-        for a, b in data.__dict__.items():
+        for a, b in self.data().__dict__.items():
             setattr(self, a, b)
 
     class data():
@@ -183,19 +182,6 @@ class dataloader():
             bc = [w_pad * sos + x + w_pad * (s_len - len(x) + eos) for x in bc]
             bc = LongTensor(bc) # [B * Ld, Ls, Lw]
         return bc, bw
-
-def batchify(bxc, bxw, sos = False, eos = False, minlen = 0):
-    bxw_len = max(minlen, max(len(x) for x in bxw))
-    if bxc:
-        bxc_len = max(minlen, max(len(w) for x in bxc for w in x))
-        pad = [[PAD_IDX] * (bxc_len + 2)]
-        bxc = [[[SOS_IDX, *w, EOS_IDX, *[PAD_IDX] * (bxc_len - len(w))] for w in x] for x in bxc]
-        bxc = [(pad if sos else []) + x + (pad * (bxw_len - len(x) + eos)) for x in bxc]
-        bxc = LongTensor(bxc)
-    sos = [SOS_IDX] if sos else []
-    eos = [EOS_IDX] if eos else []
-    bxw = [sos + list(x) + eos + [PAD_IDX] * (bxw_len - len(x)) for x in bxw]
-    return bxc, LongTensor(bxw)
 
 def maskset(x):
     if type(x) == torch.Tensor:

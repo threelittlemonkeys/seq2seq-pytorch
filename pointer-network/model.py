@@ -2,12 +2,12 @@ from utils import *
 from embedding import embed
 
 class ptrnet(nn.Module): # pointer networks
-    def __init__(self, char_vocab_size, word_vocab_size):
+    def __init__(self, cti_size, wti_size):
         super().__init__()
 
         # architecture
-        self.enc = encoder(char_vocab_size, word_vocab_size)
-        self.dec = decoder(char_vocab_size, word_vocab_size)
+        self.enc = encoder(cti_size, wti_size)
+        self.dec = decoder(cti_size, wti_size)
         self = self.cuda() if CUDA else self
 
     def forward(self, xc, xw, y0): # for training
@@ -33,12 +33,12 @@ class ptrnet(nn.Module): # pointer networks
         pass
 
 class encoder(nn.Module):
-    def __init__(self, char_vocab_size, word_vocab_size):
+    def __init__(self, cti_size, wti_size):
         super().__init__()
         self.hidden = None # hidden state
 
         # architecture
-        self.embed = embed(char_vocab_size, word_vocab_size, HRE)
+        self.embed = embed(cti_size, wti_size, HRE)
         self.rnn = getattr(nn, RNN_TYPE)(
             input_size = EMBED_SIZE,
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
@@ -69,14 +69,14 @@ class encoder(nn.Module):
         return h
 
 class decoder(nn.Module):
-    def __init__(self, char_vocab_size, word_vocab_size):
+    def __init__(self, cti_size, wti_size):
         super().__init__()
         self.hidden = None # hidden state
         self.enc_out = None # encoder output
         self.dec_out = None # decoder output
 
         # architecture
-        self.embed = embed(char_vocab_size, word_vocab_size)
+        self.embed = embed(cti_size, wti_size)
         self.rnn = getattr(nn, RNN_TYPE)(
             input_size = EMBED_SIZE,
             hidden_size = HIDDEN_SIZE // NUM_DIRS,

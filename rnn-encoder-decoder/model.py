@@ -2,23 +2,24 @@ from utils import *
 from embedding import embed
 
 class rnn_enc_dec(nn.Module):
-    def __init__(self, src_vocab_size, tgt_vocab_size):
+    def __init__(self, x_cti_size, x_wti_size, y_wti_size):
         super().__init__()
 
         # architecture
-        self.enc = encoder(src_vocab_size)
-        self.dec = decoder(tgt_vocab_size)
+        self.enc = encoder(x_cti_size, x_wti_size)
+        self.dec = decoder(y_wti_size)
         self = self.cuda() if CUDA else self
 
-    def forward(self, x, y): # for training
+    def forward(self, xc, xw, y0): # for training
+        b = y0.size(0) # batch size
         loss = 0
         self.zero_grad()
-        mask = maskset(x)
-        enc_out = self.enc(x, mask)
-        dec_in = LongTensor([SOS_IDX] * BATCH_SIZE)
+        mask, lens = maskset(y0 if HRE else xw)
+        self.dec.enc_out = self.enc(b, xc, xw, lens)
         self.dec.hidden = self.enc.hidden
+        dec_in = LongTensor([SOS_IDX] * b)
         if self.dec.feed_input:
-            self.dec.attn.h = zeros(BATCH_SIZE, 1, HIDDEN_SIZE)
+            self.dec.attn.h = zeros(b, 1, HIDDEN_SIZE)
         for t in range(y.size(1)):
             dec_out = self.dec(dec_in.unsqueeze(1), enc_out, t, mask)
             dec_in = y[:, t] # teacher forcing
@@ -31,11 +32,11 @@ class rnn_enc_dec(nn.Module):
         pass
 
 class encoder(nn.Module):
-    def __init__(self, vocab_size):
+    def __init__(self, cti_size, wti_size):
         super().__init__()
 
         # architecture
-        self.embed = embed(-1, vocab_size)
+        self.embed = embed(cti_size, wti_size)
         self.rnn = getattr(nn, RNN_TYPE)(
             input_size = sum(EMBED.values()),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
@@ -46,30 +47,35 @@ class encoder(nn.Module):
             bidirectional = (NUM_DIRS == 2)
         )
 
-    def init_state(self): # initialize RNN states
-        args = (NUM_LAYERS * NUM_DIRS, BATCH_SIZE, HIDDEN_SIZE // NUM_DIRS)
-        hs = zeros(*args) # hidden state
+    def init_state(self, b): # initialize RNN states
+        n = NUM_LAYERS * NUM_DIRS
+        h = HIDDEN_SIZE // NUM_DIRS
+        hs = zeros(n, b, h) # hidden state
         if RNN_TYPE == "LSTM":
-            cs = zeros(*args) # LSTM cell state
+            cs = zeros(n, b, h) # LSTM cell state
             return (hs, cs)
         return hs
 
-
-    def forward(self, x, mask):
-        self.hidden = self.init_state()
-        x = self.embed(None, x)
-        x = nn.utils.rnn.pack_padded_sequence(x, mask[1], batch_first = True)
+    def forward(self, b, xc, xw, lens):
+        self.hidden = self.init_state(b)
+        x = self.embed(xc, xw)
+        if HRE: # [B * doc_len, 1, H] -> [B, doc_len, H]
+            x = x.view(b, -1, EMBED_SIZE)
+        x = nn.utils.rnn.pack_padded_sequence(x, lens, batch_first = True)
         h, _ = self.rnn(x, self.hidden)
         h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first = True)
         return h
 
 class decoder(nn.Module):
-    def __init__(self, vocab_size):
+    def __init__(self, wti_size):
         super().__init__()
+        self.hidden = None # hidden state
+        self.enc_out = None # encoder output
+        self.dec_out = None # decoder output
         self.feed_input = True # input feeding
 
         # architecture
-        self.embed = embed(-1, vocab_size)
+        self.embed = embed(-1, wti_size)
         self.rnn = getattr(nn, RNN_TYPE)(
             input_size = sum(EMBED.values()) + (HIDDEN_SIZE if self.feed_input else 0),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
@@ -80,7 +86,7 @@ class decoder(nn.Module):
             bidirectional = (NUM_DIRS == 2)
         )
         self.attn = attn()
-        self.out = nn.Linear(HIDDEN_SIZE, vocab_size)
+        self.out = nn.Linear(HIDDEN_SIZE, wti_size)
         self.softmax = nn.LogSoftmax(1)
 
     def forward(self, dec_in, enc_out, t, mask):
@@ -99,8 +105,8 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
         super().__init__()
         self.type = "global" # global, local-m, local-p
         self.method = "dot" # dot, general, concat
-        self.a = None # attention weights (for heatmap)
         self.h = None # attention vector (for input feeding)
+        self.w = None # attention weights (for visualization)
 
         # architecture
         if self.type in ("local-m", "local-p"):
