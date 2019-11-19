@@ -15,17 +15,17 @@ class rnn_enc_dec(nn.Module):
         loss = 0
         self.zero_grad()
         mask, lens = maskset(y0 if HRE else xw)
-        self.dec.enc_out = self.enc(b, xc, xw, lens)
+        self.dec.hs = self.enc(b, xc, xw, lens)
         self.dec.hidden = self.enc.hidden
-        dec_in = LongTensor([SOS_IDX] * b)
+        y1 = LongTensor([[SOS_IDX]] * b)
         if self.dec.feed_input:
-            self.dec.attn.h = zeros(b, 1, HIDDEN_SIZE)
-        for t in range(y.size(1)):
-            dec_out = self.dec(dec_in.unsqueeze(1), enc_out, t, mask)
-            dec_in = y[:, t] # teacher forcing
-            loss += F.nll_loss(dec_out, dec_in, ignore_index = PAD_IDX)
-        loss /= y.size(1) # divide by senquence length
-        # loss /= y.gt(0).sum().float() # divide by the number of unpadded tokens
+            self.dec.attn.v = zeros(b, 1, HIDDEN_SIZE)
+        for t in range(y0.size(1)):
+            y1 = self.dec(y1, t, mask)
+            yw = y0[:, t] # teacher forcing
+            loss += F.nll_loss(y1, yw, ignore_index = PAD_IDX)
+        loss /= y0.size(1) # divide by senquence length
+        # loss /= y0.gt(0).sum().float() # divide by the number of unpadded tokens
         return loss
 
     def decode(self, x): # for inference
@@ -34,6 +34,7 @@ class rnn_enc_dec(nn.Module):
 class encoder(nn.Module):
     def __init__(self, cti_size, wti_size):
         super().__init__()
+        self.hidden = None # encoder hidden state
 
         # architecture
         self.embed = embed(cti_size, wti_size)
@@ -69,9 +70,8 @@ class encoder(nn.Module):
 class decoder(nn.Module):
     def __init__(self, wti_size):
         super().__init__()
-        self.hidden = None # hidden state
-        self.enc_out = None # encoder output
-        self.dec_out = None # decoder output
+        self.hs = None # source hidden state
+        self.hidden = None # decoder hidden state
         self.feed_input = True # input feeding
 
         # architecture
@@ -89,13 +89,13 @@ class decoder(nn.Module):
         self.out = nn.Linear(HIDDEN_SIZE, wti_size)
         self.softmax = nn.LogSoftmax(1)
 
-    def forward(self, dec_in, enc_out, t, mask):
-        x = self.embed(None, dec_in)
+    def forward(self, y1, t, mask):
+        x = self.embed(None, y1)
         if self.feed_input:
-            x = torch.cat((x, self.attn.h), 2)
+            x = torch.cat((x, self.attn.v), 2)
         h, _ = self.rnn(x, self.hidden)
         if self.attn:
-            h = self.attn(h, enc_out, t, mask)
+            h = self.attn(h, self.hs, t, mask)
         h = self.out(h).squeeze(1)
         y = self.softmax(h)
         return y
@@ -105,7 +105,7 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
         super().__init__()
         self.type = "global" # global, local-m, local-p
         self.method = "dot" # dot, general, concat
-        self.h = None # attention vector (for input feeding)
+        self.v = None # attention vector (for input feeding)
         self.w = None # attention weights (for visualization)
 
         # architecture
@@ -172,7 +172,12 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
             mask = mask[0]
         a = self.align(ht, hs, mask, k)
         c = a.bmm(hs) # context vector [B, 1, L] @ [B, L, H] = [B, 1, H]
-        h = torch.tanh(self.Wc(torch.cat((c, ht), 2)))
+        print(a.size())
+        print(hs.size())
+        print(c.size())
+        print(ht.size())
+        exit()
+        v = torch.tanh(self.Wc(torch.cat((c, ht), 2)))
         self.a = a
-        self.h = h
-        return h # attention vector as attentional hidden state
+        self.v = v
+        return v # attention vector as attentional hidden state

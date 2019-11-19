@@ -15,14 +15,14 @@ class ptrnet(nn.Module): # pointer networks
         loss = 0
         self.zero_grad()
         mask, lens = maskset(y0 if HRE else xw)
-        self.dec.enc_out = self.enc(b, xc, xw, lens)
+        self.dec.hs = self.enc(b, xc, xw, lens)
         self.dec.hidden = self.enc.hidden
         yc = LongTensor([[[SOS_IDX]]] * b)
         yw = LongTensor([[SOS_IDX]] * b)
         for t in range(y0.size(1)):
-            dec_out = self.dec(yc, yw, mask)
+            y1 = self.dec(yc, yw, mask)
             yw = y0[:, t] - 1 # teacher forcing
-            loss += F.nll_loss(dec_out, yw, ignore_index = PAD_IDX - 1)
+            loss += F.nll_loss(y1, yw, ignore_index = PAD_IDX - 1)
             yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).view(b, 1, -1)
             yw = torch.cat([xw[i, j].view(1, 1) for i, j in enumerate(yw)])
         loss /= y0.size(1) # divide by senquence length
@@ -35,7 +35,7 @@ class ptrnet(nn.Module): # pointer networks
 class encoder(nn.Module):
     def __init__(self, cti_size, wti_size):
         super().__init__()
-        self.hidden = None # hidden state
+        self.hidden = None # encoder hidden state
 
         # architecture
         self.embed = embed(cti_size, wti_size, HRE)
@@ -71,9 +71,8 @@ class encoder(nn.Module):
 class decoder(nn.Module):
     def __init__(self, cti_size, wti_size):
         super().__init__()
-        self.hidden = None # hidden state
-        self.enc_out = None # encoder output
-        self.dec_out = None # decoder output
+        self.hs = None # source hidden state
+        self.hidden = None # decoder hidden state
 
         # architecture
         self.embed = embed(cti_size, wti_size)
@@ -91,7 +90,7 @@ class decoder(nn.Module):
     def forward(self, xc, xw, mask):
         x = self.embed(xc, xw)
         h, _ = self.rnn(x, self.hidden)
-        h = self.attn(h, self.enc_out, mask)
+        h = self.attn(h, self.hs, mask)
         return h
 
 class attn(nn.Module): # content based input attention

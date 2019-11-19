@@ -9,8 +9,8 @@ def load_model():
     load_checkpoint(sys.argv[1], model)
     return model, cti, wti
 
-def greedy_search(dec, batch, eos, lens):
-    bp, by = dec.dec_out.topk(1)
+def greedy_search(dec, y1, batch, eos, lens):
+    bp, by = y1.topk(1)
     y = by.view(-1).tolist()
     for i, _ in filter(lambda x: not x[1], enumerate(eos)):
         j = lens[i] # sequence length
@@ -20,8 +20,8 @@ def greedy_search(dec, batch, eos, lens):
         batch.attn[i].append([y[i], *dec.attn.w[i, :j].exp()])
     return by
 
-def beam_search(dec, batch, eos, lens, t):
-    bp, by = dec.dec_out.topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
+def beam_search(dec, y1, batch, eos, lens, t):
+    bp, by = y1.topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
     bp += Tensor([-10000 if b else a for a, b in zip(batch.prob, eos)]).unsqueeze(1)
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
     by = by.view(-1, BEAM_SIZE ** 2)
@@ -63,15 +63,15 @@ def run_model(model, data):
         xc, xw = data.tensor(batch.xc, batch.xw, batch.lens, eos = True)
         eos = [False for _ in batch.x0] # EOS states
         mask, lens = maskset([x + 1 for x in batch.lens] if HRE else xw)
-        model.dec.enc_out = model.enc(b, xc, xw, lens)
+        model.dec.hs = model.enc(b, xc, xw, lens)
         model.dec.hidden = model.enc.hidden
         yc = LongTensor([[[SOS_IDX]]] * b)
         yw = LongTensor([[SOS_IDX]] * b)
         for i in range(len(batch.lens)): # attention heatmap column headers
             batch.attn[i].append(["", *(range(batch.lens[i]) if HRE else batch.x1[i]), EOS])
         while sum(eos) < len(eos) and t < MAX_LEN:
-            model.dec.dec_out = model.dec(yc, yw, mask)
-            args = (model.dec, batch, eos, lens)
+            y1 = model.dec(yc, yw, mask)
+            args = (model.dec, y1, batch, eos, lens)
             yw = greedy_search(*args) if BEAM_SIZE == 1 else beam_search(*args, t)
             yc = torch.cat([xc[i, j] for i, j in enumerate(yw)]).unsqueeze(1)
             t += 1
