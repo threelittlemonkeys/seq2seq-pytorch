@@ -158,7 +158,10 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
             a = ht.bmm(self.Wa(hs).transpose(1, 2))
         elif self.method == "concat":
             pass # TODO
+        print(a.size())
         a = a.masked_fill(mask.unsqueeze(1), -10000) # masking in log space
+        print(a.size())
+        exit()
         a = self.softmax(a) # [B, 1, H] @ [B, H, L] = [B, 1, L]
         if self.type == "local-p":
             a = a * k
@@ -172,11 +175,6 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
             mask = mask[0]
         a = self.align(ht, hs, mask, k)
         c = a.bmm(hs) # context vector [B, 1, L] @ [B, L, H] = [B, 1, H]
-        print(a.size())
-        print(hs.size())
-        print(c.size())
-        print(ht.size())
-        exit()
         v = torch.tanh(self.Wc(torch.cat((c, ht), 2)))
         self.a = a
         self.v = v
