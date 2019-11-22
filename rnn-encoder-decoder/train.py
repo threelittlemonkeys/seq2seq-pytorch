@@ -28,8 +28,8 @@ def load_data():
 
 def train():
     num_epochs = int(sys.argv[-1])
-    batch, x_cti, x_wti, y_itt = load_data()
-    model = rnn_enc_dec(len(x_cti), len(x_wti), len(y_itt))
+    batch, x_cti, x_wti, y_wti = load_data()
+    model = rnn_enc_dec(len(x_cti), len(x_wti), len(y_wti))
     enc_optim = torch.optim.Adam(model.enc.parameters(), lr = LEARNING_RATE)
     dec_optim = torch.optim.Adam(model.dec.parameters(), lr = LEARNING_RATE)
     print(model)

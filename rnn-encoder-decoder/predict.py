@@ -2,13 +2,13 @@ from model import *
 from utils import *
 
 def load_model():
-    src_vocab = load_vocab(sys.argv[2])
-    tgt_vocab = load_vocab(sys.argv[3])
-    tgt_vocab = [x for x, _ in sorted(tgt_vocab.items(), key = lambda x: x[1])]
-    model = rnn_enc_dec(len(src_vocab), len(tgt_vocab))
+    x_cti = load_tkn_to_idx(sys.argv[2])
+    x_wti = load_tkn_to_idx(sys.argv[3])
+    y_itw = load_idx_to_tkn(sys.argv[4])
+    model = rnn_enc_dec(len(x_cti), len(x_wti), len(y_itw))
     print(model)
     load_checkpoint(sys.argv[1], model)
-    return model, src_vocab, tgt_vocab
+    return model, x_cti, x_wti, y_itw
 
 def greedy_search(dec, dec_out, itw, batch, eos, heatmap):
     p, dec_in = dec_out.topk(1)
@@ -94,7 +94,7 @@ def run_model(model, tgt_vocab, batch):
     return [(x[1], [tgt_vocab[x] for x in x[3][:-1]], x[4].item()) for x in batch]
 
 def predict(filename, model, src_vocab, tgt_vocab):
-    data = []
+    data = dataloader()
     result = []
     fo = open(filename)
     for idx, line in enumerate(fo):
@@ -110,9 +110,7 @@ def predict(filename, model, src_vocab, tgt_vocab):
                 yield y
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        sys.exit("Usage: %s model vocab.src vocab.tgt test_data" % sys.argv[0])
-    print("cuda: %s" % CUDA)
-    result = predict(sys.argv[4], *load_model())
-    for x, y, p in result:
+    if len(sys.argv) != 6:
+        sys.exit("Usage: %s model vocab.src.char_to_idx vocab.src.word_to_idx vocab.tgt.word_to_idx test_data" % sys.argv[0])
+    for x, y, p in predict(sys.argv[5], *load_model()):
         print((x, y))
