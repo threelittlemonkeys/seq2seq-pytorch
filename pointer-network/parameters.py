@@ -12,7 +12,6 @@ NUM_LAYERS = 2
 BATCH_SIZE = 64 # BATCH_SIZE * BEAM_SIZE
 HRE = (UNIT == "sent") # hierarchical recurrent encoding
 EMBED = {"char-rnn": 150, "lookup": 150} # embeddings (char-cnn, char-rnn, lookup, sae)
-EMBED_SIZE = sum(EMBED.values())
 HIDDEN_SIZE = 1000
 DROPOUT = 0.5
 LEARNING_RATE = 2e-4

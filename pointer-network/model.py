@@ -38,9 +38,9 @@ class encoder(nn.Module):
         self.hidden = None # encoder hidden state
 
         # architecture
-        self.embed = embed(cti_size, wti_size, HRE)
+        self.embed = embed(EMBED, cti_size, wti_size, HRE)
         self.rnn = getattr(nn, RNN_TYPE)(
-            input_size = EMBED_SIZE,
+            input_size = self.embed.dim,
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -62,7 +62,7 @@ class encoder(nn.Module):
         self.hidden = self.init_state(b)
         x = self.embed(xc, xw)
         if HRE: # [B * doc_len, 1, H] -> [B, doc_len, H]
-            x = x.view(b, -1, EMBED_SIZE)
+            x = x.view(b, -1, self.embed.dim)
         x = nn.utils.rnn.pack_padded_sequence(x, lens, batch_first = True)
         h, _ = self.rnn(x, self.hidden)
         h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first = True)
@@ -75,9 +75,9 @@ class decoder(nn.Module):
         self.hidden = None # decoder hidden state
 
         # architecture
-        self.embed = embed(cti_size, wti_size)
+        self.embed = embed(EMBED, cti_size, wti_size)
         self.rnn = getattr(nn, RNN_TYPE)(
-            input_size = EMBED_SIZE,
+            input_size = self.embed.dim,
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,

@@ -37,9 +37,9 @@ class encoder(nn.Module):
         self.hidden = None # encoder hidden state
 
         # architecture
-        self.embed = embed(cti_size, wti_size)
+        self.embed = embed(ENC_EMBED, cti_size, wti_size)
         self.rnn = getattr(nn, RNN_TYPE)(
-            input_size = sum(EMBED.values()),
+            input_size = self.embed.dim,
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -61,7 +61,7 @@ class encoder(nn.Module):
         self.hidden = self.init_state(b)
         x = self.embed(xc, xw)
         if HRE: # [B * doc_len, 1, H] -> [B, doc_len, H]
-            x = x.view(b, -1, EMBED_SIZE)
+            x = x.view(b, -1, self.embed.dim)
         x = nn.utils.rnn.pack_padded_sequence(x, lens, batch_first = True)
         h, _ = self.rnn(x, self.hidden)
         h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first = True)
@@ -75,9 +75,9 @@ class decoder(nn.Module):
         self.feed_input = True # input feeding
 
         # architecture
-        self.embed = embed(-1, wti_size)
+        self.embed = embed(DEC_EMBED, 0, wti_size)
         self.rnn = getattr(nn, RNN_TYPE)(
-            input_size = sum(EMBED.values()) + (HIDDEN_SIZE if self.feed_input else 0),
+            input_size = self.embed.dim + (HIDDEN_SIZE if self.feed_input else 0),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -129,18 +129,14 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
         # if self.type[-1] == "p": # predicative
         s = Tensor(mask[1]) # source sequence length
         pt = s * torch.sigmoid(self.Vp(torch.tanh(self.Wp(ht)))).view(-1) # aligned position
-        hs_w = []
-        mask_w = []
+        hs_w, mask_w = [], []
         k = [] # truncated Gaussian distribution as kernel function
         for i in range(BATCH_SIZE):
-            p = int(s[i].item())
-            seq_len = mask[1][i]
-            min_len = mask[1][-1]
+            p, seq_len, min_len = int(s[i].item()), mask[1][i], mask[1][-1]
             p0 = max(0, min(p - self.window_size, seq_len - self.window_size))
             p1 = min(seq_len, p + 1 + self.window_size)
             if min_len < p1 - p0:
-                p0 = 0
-                p1 = min_len
+                p0, p1 = 0, min_len
             hs_w.append(hs[i, p0:p1])
             mask_w.append(mask[0][i, p0:p1])
             sd = (p1 - p0) / 2 # standard deviation

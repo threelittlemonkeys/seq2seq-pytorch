@@ -1,29 +1,33 @@
 from utils import *
 
 class embed(nn.Module):
-    def __init__(self, cti_size, wti_size, hre = False):
+    def __init__(self, ls, cti_size, wti_size, hre = False):
         super().__init__()
+        self.ls = ls # embedding module list
+        self.dim = sum(ls.values())
         self.hre = hre # hierarchical recurrent encoding
 
         # architecture
-        for model, dim in EMBED.items():
-            if model == "char-cnn":
-                self.char_embed = self.cnn(cti_size, dim)
-            elif model == "char-rnn":
-                self.char_embed = self.rnn(cti_size, dim)
-            if model == "lookup":
-                self.word_embed = nn.Embedding(wti_size, dim, padding_idx = PAD_IDX)
-            elif model == "sae":
-                self.word_embed = self.sae(wti_size, dim)
+        for model, dim in self.ls.items():
+            if cti_size > 0:
+                if model == "char-cnn":
+                    self.char_embed = self.cnn(cti_size, dim)
+                elif model == "char-rnn":
+                    self.char_embed = self.rnn(cti_size, dim)
+            if wti_size > 0:
+                if model == "lookup":
+                    self.word_embed = nn.Embedding(wti_size, dim, padding_idx = PAD_IDX)
+                elif model == "sae":
+                    self.word_embed = self.sae(wti_size, dim)
         if self.hre:
-            self.sent_embed = self.rnn(EMBED_SIZE, EMBED_SIZE, True)
+            self.sent_embed = self.rnn(self.dim, self.dim, True)
         self = self.cuda() if CUDA else self
 
     def forward(self, xc, xw):
         hc, hw = None, None
-        if "char-cnn" in EMBED or "char-rnn" in EMBED:
+        if type(xc) == torch.Tensor and ("char-cnn" in self.ls or "char-rnn" in self.ls):
             hc = self.char_embed(xc)
-        if "lookup" in EMBED or "sae" in EMBED:
+        if type(xw) == torch.Tensor and ("lookup" in self.ls or "sae" in self.ls):
             hw = self.word_embed(xw)
         h = torch.cat([h for h in [hc, hw] if type(h) == torch.Tensor], 2)
         if self.hre:
