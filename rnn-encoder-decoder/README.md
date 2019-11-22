@@ -23,15 +23,15 @@ source_sequence \t target_sequence
 
 To prepare data:
 ```
-python prepare.py training_data
+python3 prepare.py training_data
 ```
 
 To train:
 ```
-python train.py model vocab.src vocab.tgt training_data.csv num_epoch
+python3 train.py model vocab.src vocab.tgt training_data.csv num_epoch
 ```
 
 To predict:
 ```
-python predict.py model.epochN vocab.src vocab.tgt test_data
+python3 predict.py model.epochN vocab.src vocab.tgt test_data
 ```
