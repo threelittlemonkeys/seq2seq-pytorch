@@ -14,7 +14,7 @@ class rnn_enc_dec(nn.Module):
         b = y0.size(0) # batch size
         loss = 0
         self.zero_grad()
-        mask, lens = maskset(y0 if HRE else xw)
+        mask, lens = maskset(xw)
         self.dec.hs = self.enc(b, xc, xw, lens)
         self.dec.hidden = self.enc.hidden
         yi = LongTensor([SOS_IDX] * b)
@@ -60,8 +60,6 @@ class encoder(nn.Module):
     def forward(self, b, xc, xw, lens):
         self.hidden = self.init_state(b)
         x = self.embed(xc, xw)
-        if HRE: # [B * doc_len, 1, H] -> [B, doc_len, H]
-            x = x.view(b, -1, self.embed.dim)
         x = nn.utils.rnn.pack_padded_sequence(x, lens, batch_first = True)
         h, _ = self.rnn(x, self.hidden)
         h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first = True)

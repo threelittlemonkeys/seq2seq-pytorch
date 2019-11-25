@@ -10,9 +10,9 @@ RNN_TYPE = "LSTM" # LSTM or GRU
 NUM_DIRS = 2 # unidirectional: 1, bidirectional: 2
 NUM_LAYERS = 2
 BATCH_SIZE = 64 * 3 # BATCH_SIZE * BEAM_SIZE
-HRE = (UNIT == "sent") # hierarchical recurrent encoding
+HRE = False # (UNIT == "sent") # hierarchical recurrent encoding
 ENC_EMBED = {"char-cnn": 150, "lookup": 150} # encoder embedding (char-cnn, char-rnn, lookup, sae)
-DEC_EMBED = {"lookup": 300} # decoder embedding (char-cnn, char-rnn, lookup)
+DEC_EMBED = {"lookup": 300} # decoder embedding (lookup only)
 HIDDEN_SIZE = 1000
 DROPOUT = 0.5
 LEARNING_RATE = 2e-4

@@ -10,7 +10,7 @@ def load_model():
     load_checkpoint(sys.argv[1], model)
     return model, x_cti, x_wti, y_itw
 
-def greedy_search(dec, dec_out, itw, batch, eos, heatmap):
+def greedy_search(dec, yo, batch, eos, lens):
     p, dec_in = dec_out.topk(1)
     y = dec_in.view(-1).tolist()
     for i in range(len(eos)):
@@ -22,7 +22,7 @@ def greedy_search(dec, dec_out, itw, batch, eos, heatmap):
         heatmap[i].append([itw[y[i]]] + dec.attn.a[i][0].tolist())
     return dec_in
 
-def beam_search(dec, dec_out, itw, batch, eos, heatmap, t):
+def beam_search(dec, yo, batch, eos, lens, t):
     bp, by = dec_out[:len(eos)].topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
     bp += Tensor([-10000 if b else a[4] for a, b in zip(batch, eos)]).unsqueeze(1) # update
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
@@ -62,7 +62,26 @@ def beam_search(dec, dec_out, itw, batch, eos, heatmap, t):
             print()
     return LongTensor([next(reversed(x[3]), SOS_IDX) for x in batch]).unsqueeze(1)
 
-def run_model(model, tgt_vocab, batch):
+def run_model(model, data):
+    data.sort()
+    for batch in data.split():
+        b, t = len(batch.x0), 0 # batch size, time step
+        xc, xw = data.tensor(batch.xc, batch.xw, batch.lens, eos = True)
+        eos = [False for _ in batch.x0] # EOS states
+        mask, lens = maskset([x + 1 for x in batch.lens] if HRE else xw)
+        model.dec.hs = model.enc(b, xc, xw, lens)
+        model.dec.hidden = model.enc.hidden
+        yi = LongTensor([SOS_IDX] * b)
+        if model.dec.feed_input:
+            model.dec.attn.v = zeros(b, 1, HIDDEN_SIZE)
+        for i in range(len(batch.lens)): # attention heatmap column headers
+            batch.attn[i].append(["", *batch.x1[i], EOS])
+        while sum(eos) < len(eos) and t < MAX_LEN:
+            yo = model.dec(yi.unsqueeze(1), t, mask)
+            args = (model.dec, yo, batch, eos, lens)
+            yi = greedy_search(*args) if BEAM_SIZE == 1 else beam_search(*args, t)
+            break
+    exit()
     t = 0
     eos = [False for _ in batch] # number of completed sequences in the batch
     while len(batch) < BATCH_SIZE:
@@ -93,21 +112,24 @@ def run_model(model, tgt_vocab, batch):
     batch = [x for i, x in enumerate(batch) if not i % BEAM_SIZE]
     return [(x[1], [tgt_vocab[x] for x in x[3][:-1]], x[4].item()) for x in batch]
 
-def predict(filename, model, src_vocab, tgt_vocab):
+def predict(filename, model, x_cti, x_wti, y_wti):
     data = dataloader()
-    result = []
     fo = open(filename)
-    for idx, line in enumerate(fo):
-        tkn = tokenize(line, UNIT)
-        x = [src_vocab[i] if i in src_vocab else UNK_IDX for i in tkn]
-        data.extend([[idx, tkn, x, [], Tensor([0])] for _ in range(BEAM_SIZE)])
+    for x0 in fo:
+        x0 = x0.strip()
+        x1 = tokenize(x0, UNIT)
+        xc = [[x_cti[c] if c in x_cti else UNK_IDX for c in w] for w in x1]
+        xw = [x_wti[w] if w in x_wti else UNK_IDX for w in x1]
+        data.append_item(x0 = [x0], x1 = [x1], xc = [xc], xw = [xw])
+        for _ in range(BEAM_SIZE - 1):
+            data.append_row()
+            data.append_item(x0 = [x0], x1 = [x1], xc = [xc], xw = [xw])
+        data.append_row()
     fo.close()
+    data.strip()
     with torch.no_grad():
         model.eval()
-        for i in range(0, len(data), BATCH_SIZE):
-            batch = data[i:i + BATCH_SIZE]
-            for y in run_model(model, tgt_vocab, batch):
-                yield y
+        return run_model(model, data)
 
 if __name__ == "__main__":
     if len(sys.argv) != 6:
