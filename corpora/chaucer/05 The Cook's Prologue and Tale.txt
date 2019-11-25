@@ -1,4 +1,4 @@
-The Prologe of the Cokes Tale	The Prologue of the Cook's Tale
+	The Prologe of the Cokes Tale	The Prologue of the Cook's Tale
 4325	The Cook of Londoun, whil the Reve spak,	The Cook of London, while the Reeve spoke,
 4326	For joye him thoughte he clawed him on the bak.	Was so happy he thought the Reeve scratched him on the back.
 4327	"Ha! ha!" quod he, "For Cristes passion,	"Ha! ha!" said he, "For Christ's passion,
@@ -39,7 +39,7 @@ The Prologe of the Cokes Tale	The Prologue of the Cook's Tale
 4362	But er we parte, ywis, thou shalt be quit."	But before we part, indeed, thou shalt be repaid."
 4363	And therwithal he lough and made cheere,	And with that he laughed and made good cheer,
 4364	And seyde his tale, as ye shul after heere.	And told his tale, as you shall next hear.
-Heere bigynneth the Cookes Tale.	Here begins the Cook's Tale.
+	Heere bigynneth the Cookes Tale.	Here begins the Cook's Tale.
 4365	A prentys whilom dwelled in oure citee,	A apprentice once dwelt in our city,
 4366	And of a craft of vitailliers was hee.	And of a craft of food merchants was he.
 4367	Gaillard he was as goldfynch in the shawe,	Gaily dressed he was as is a goldfinch in the woods,
