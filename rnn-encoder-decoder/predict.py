@@ -17,7 +17,7 @@ def greedy_search(dec, yo, batch, itw, eos, lens):
         eos[i] = (y[i] == EOS_IDX)
         batch.y1[i].append(itw[y[i]])
         batch.prob[i] += p[i]
-        batch.attn[i].append([itw[y[i]], *dec.attn.w[i][0].tolist()])
+        batch.attn[i].append([itw[y[i]], *dec.attn.w[i, 0, :lens[i]]])
     return yi
 
 def beam_search(dec, yo, batch, itw, eos, lens, t):
