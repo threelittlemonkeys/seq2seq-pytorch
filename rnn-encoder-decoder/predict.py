@@ -10,19 +10,18 @@ def load_model():
     load_checkpoint(sys.argv[1], model)
     return model, x_cti, x_wti, y_itw
 
-def greedy_search(dec, yo, batch, eos, lens):
-    p, dec_in = dec_out.topk(1)
-    y = dec_in.view(-1).tolist()
-    for i in range(len(eos)):
-        if eos[i]:
-            continue
-        batch[i][3].append(y[i])
-        batch[i][4] += p[i]
+def greedy_search(dec, yo, batch, itw, eos, lens):
+    p, yi = yo.topk(1)
+    y = yi.view(-1).tolist()
+    for i, _ in filter(lambda x: not x[1], enumerate(eos)):
         eos[i] = (y[i] == EOS_IDX)
-        heatmap[i].append([itw[y[i]]] + dec.attn.a[i][0].tolist())
-    return dec_in
+        print(y[i], itw[y[i]])
+        batch.y1[i].append(y[i])
+        batch.prob[i] += p[i]
+        batch.attn[i].append([itw[y[i]], *dec.attn.a[i][0].tolist()])
+    return yi
 
-def beam_search(dec, yo, batch, eos, lens, t):
+def beam_search(dec, yo, batch, itw, eos, lens, t):
     bp, by = dec_out[:len(eos)].topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
     bp += Tensor([-10000 if b else a[4] for a, b in zip(batch, eos)]).unsqueeze(1) # update
     bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
@@ -62,7 +61,7 @@ def beam_search(dec, yo, batch, eos, lens, t):
             print()
     return LongTensor([next(reversed(x[3]), SOS_IDX) for x in batch]).unsqueeze(1)
 
-def run_model(model, data):
+def run_model(model, data, itw):
     data.sort()
     for batch in data.split():
         b, t = len(batch.x0), 0 # batch size, time step
@@ -78,9 +77,14 @@ def run_model(model, data):
             batch.attn[i].append(["", *batch.x1[i], EOS])
         while sum(eos) < len(eos) and t < MAX_LEN:
             yo = model.dec(yi.unsqueeze(1), t, mask)
-            args = (model.dec, yo, batch, eos, lens)
+            args = (model.dec, yo, batch, itw, eos, lens)
             yi = greedy_search(*args) if BEAM_SIZE == 1 else beam_search(*args, t)
-            break
+    data.unsort()
+    if VERBOSE:
+        print()
+        for i, x in filter(lambda x: not x[0] % BEAM_SIZE, enumerate(data.attn)):
+            print("attn[%d] =" % (i // BEAM_SIZE))
+            print(mat2csv(x, rh = True))
     exit()
     t = 0
     eos = [False for _ in batch] # number of completed sequences in the batch
@@ -112,7 +116,7 @@ def run_model(model, data):
     batch = [x for i, x in enumerate(batch) if not i % BEAM_SIZE]
     return [(x[1], [tgt_vocab[x] for x in x[3][:-1]], x[4].item()) for x in batch]
 
-def predict(filename, model, x_cti, x_wti, y_wti):
+def predict(filename, model, x_cti, x_wti, y_itw):
     data = dataloader()
     fo = open(filename)
     for x0 in fo:
@@ -129,7 +133,7 @@ def predict(filename, model, x_cti, x_wti, y_wti):
     data.strip()
     with torch.no_grad():
         model.eval()
-        return run_model(model, data)
+        return run_model(model, data, y_itw)
 
 if __name__ == "__main__":
     if len(sys.argv) != 6:
