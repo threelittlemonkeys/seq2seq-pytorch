@@ -106,6 +106,5 @@ class attn(nn.Module): # content based input attention
 
     def forward(self, ht, hs, mask):
         a = self.v(torch.tanh(self.w1(hs) + self.w2(ht))) # [B, L, H] -> [B, L, 1]
-        a = a.squeeze(2).masked_fill(mask, -10000) # masking in log space
-        self.w = self.softmax(a)
-        return self.w # attention weights
+        self.w = self.softmax(a.squeeze(2).masked_fill(mask, -10000))
+        return self.w

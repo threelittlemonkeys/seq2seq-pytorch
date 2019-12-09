@@ -15,10 +15,9 @@ def greedy_search(dec, yo, batch, itw, eos, lens):
     y = yi.view(-1).tolist()
     for i, _ in filter(lambda x: not x[1], enumerate(eos)):
         eos[i] = (y[i] == EOS_IDX)
-        print(y[i], itw[y[i]])
-        batch.y1[i].append(y[i])
+        batch.y1[i].append(itw[y[i]])
         batch.prob[i] += p[i]
-        batch.attn[i].append([itw[y[i]], *dec.attn.a[i][0].tolist()])
+        batch.attn[i].append([itw[y[i]], *dec.attn.w[i][0].tolist()])
     return yi
 
 def beam_search(dec, yo, batch, itw, eos, lens, t):
@@ -45,7 +44,7 @@ def beam_search(dec, yo, batch, itw, eos, lens, t):
             b1[-1][3] = b1[-1][3] + [y[k]] # word
             b1[-1][4] = p # probability
             m1.append(heatmap[q].copy())
-            m1[-1].append([itw[y[k]]] + dec.attn.a[q][0][:len(batch[j][1]) + 1].tolist())
+            m1[-1].append([itw[y[k]]] + dec.attn.w[q][0][:len(batch[j][1]) + 1].tolist())
         for k in filter(lambda x: eos[j + x], range(BEAM_SIZE)): # append completed sequences
             b1.append(batch[j + k])
             m1.append(heatmap[j + k])
@@ -70,51 +69,28 @@ def run_model(model, data, itw):
         mask, lens = maskset([x + 1 for x in batch.lens] if HRE else xw)
         model.dec.hs = model.enc(b, xc, xw, lens)
         model.dec.hidden = model.enc.hidden
-        yi = LongTensor([SOS_IDX] * b)
+        yi = LongTensor([[SOS_IDX]] * b)
         if model.dec.feed_input:
             model.dec.attn.v = zeros(b, 1, HIDDEN_SIZE)
         for i in range(len(batch.lens)): # attention heatmap column headers
             batch.attn[i].append(["", *batch.x1[i], EOS])
         while sum(eos) < len(eos) and t < MAX_LEN:
-            yo = model.dec(yi.unsqueeze(1), t, mask)
+            yo = model.dec(yi, mask, t)
             args = (model.dec, yo, batch, itw, eos, lens)
             yi = greedy_search(*args) if BEAM_SIZE == 1 else beam_search(*args, t)
+        data.y1.extend(batch.y1)
+        data.prob.extend(batch.prob)
+        data.attn.extend(batch.attn)
     data.unsort()
     if VERBOSE:
         print()
         for i, x in filter(lambda x: not x[0] % BEAM_SIZE, enumerate(data.attn)):
             print("attn[%d] =" % (i // BEAM_SIZE))
             print(mat2csv(x, rh = True))
-    exit()
-    t = 0
-    eos = [False for _ in batch] # number of completed sequences in the batch
-    while len(batch) < BATCH_SIZE:
-        batch.append([-1, [], [EOS_IDX], [], 0])
-    batch.sort(key = lambda x: -len(x[2]))
-    _, bx = batchify(None, [x[2] for x in batch], eos = True)
-    mask = maskset(bx)
-    enc_out = model.enc(bx, mask)
-    dec_in = LongTensor([SOS_IDX] * BATCH_SIZE).unsqueeze(1)
-    model.dec.hidden = model.enc.hidden
-    if model.dec.feed_input:
-        model.dec.attn.h = zeros(BATCH_SIZE, 1, HIDDEN_SIZE)
-    heatmap = [[[""] + x[1] + [EOS]] for x in batch[:len(eos)]]
-    while sum(eos) < len(eos) and t < MAX_LEN:
-        dec_out = model.dec(dec_in, enc_out, t, mask)
-        if BEAM_SIZE == 1:
-            dec_in = greedy_search(model.dec, dec_out, tgt_vocab, batch, eos, heatmap)
-        else:
-            dec_in = beam_search(model.dec, dec_out, tgt_vocab, batch, eos, heatmap, t)
-        t += 1
-    batch, heatmap = zip(*sorted(zip(batch, heatmap), key = lambda x: (x[0][0], -x[0][4])))
-    if VERBOSE >= 1:
-        for i in range(len(heatmap)):
-            if VERBOSE < 2 and i % BEAM_SIZE:
-                continue
-            print("heatmap[%d] =" % i)
-            print(mat2csv(heatmap[i], rh = True))
-    batch = [x for i, x in enumerate(batch) if not i % BEAM_SIZE]
-    return [(x[1], [tgt_vocab[x] for x in x[3][:-1]], x[4].item()) for x in batch]
+    for i, (x0, y0, y1) in enumerate(zip(data.x0, data.y0, data.y1)):
+        if not i % BEAM_SIZE: # use the best candidate from each beam
+            y1.pop() # remove EOS token
+            yield x0, y0, y1
 
 def predict(filename, model, x_cti, x_wti, y_itw):
     data = dataloader()
@@ -138,5 +114,5 @@ def predict(filename, model, x_cti, x_wti, y_itw):
 if __name__ == "__main__":
     if len(sys.argv) != 6:
         sys.exit("Usage: %s model vocab.src.char_to_idx vocab.src.word_to_idx vocab.tgt.word_to_idx test_data" % sys.argv[0])
-    for x, y, p in predict(sys.argv[5], *load_model()):
-        print((x, y))
+    for x, y0, y1 in predict(sys.argv[5], *load_model()):
+        print((x, y0, y1) if y0 else (x, y1))

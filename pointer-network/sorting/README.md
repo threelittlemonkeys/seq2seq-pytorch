@@ -24,18 +24,18 @@ EMBED = {"char-rnn": 100}
 4. Run `prepare.py` to make CSV and index files.
 
 ```
-python3 prepare.py train
+python3 ../prepare.py train
 ```
 
 5. Train your model. You can modify the hyperparameters in `parameters.py`.
 
 ```
-python3 train.py model train.char_to_idx train.word_to_idx train.tag_to_idx train.csv valid N
+python3 ../train.py model train.char_to_idx train.word_to_idx train.csv valid N
 ```
 
 6. Predict and evaluate your model.
 
 ```
-python3 predict.py model.epochN train.char_to_idx train.word_to_idx train.tag_to_idx test
-python3 evaluate.py model.epochN train.char_to_idx train.word_to_idx train.tag_to_idx test
+python3 predict.py model.epochN train.char_to_idx train.word_to_idx test
+python3 evaluate.py model.epochN train.char_to_idx train.word_to_idx test
 ```

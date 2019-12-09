@@ -67,7 +67,7 @@ def load_checkpoint(filename, model = None):
 def save_checkpoint(filename, model, epoch, loss, time):
     print("epoch = %d, loss = %f, time = %f" % (epoch, loss, time))
     if filename and model:
-        print("saving %s..." % filename)
+        print("saving %s" % filename)
         checkpoint = {}
         checkpoint["enc_state_dict"] = model.enc.state_dict()
         checkpoint["dec_state_dict"] = model.dec.state_dict()

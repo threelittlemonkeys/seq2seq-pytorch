@@ -21,7 +21,7 @@ class rnn_enc_dec(nn.Module):
         if self.dec.feed_input:
             self.dec.attn.v = zeros(b, 1, HIDDEN_SIZE)
         for t in range(y0.size(1)):
-            yo = self.dec(yi.unsqueeze(1), t, mask)
+            yo = self.dec(yi.unsqueeze(1), mask, t)
             yi = y0[:, t] # teacher forcing
             loss += F.nll_loss(yo, yi, ignore_index = PAD_IDX)
         loss /= y0.size(1) # divide by senquence length
@@ -87,13 +87,13 @@ class decoder(nn.Module):
         self.out = nn.Linear(HIDDEN_SIZE, wti_size)
         self.softmax = nn.LogSoftmax(1)
 
-    def forward(self, y1, t, mask):
+    def forward(self, y1, mask, t):
         x = self.embed(None, y1)
         if self.feed_input:
             x = torch.cat((x, self.attn.v), 2)
         h, _ = self.rnn(x, self.hidden)
         if self.attn:
-            h = self.attn(h, self.hs, t, mask)
+            h = self.attn(h, self.hs, mask, t)
         h = self.out(h).squeeze(1)
         y = self.softmax(h)
         return y
@@ -119,53 +119,50 @@ class attn(nn.Module): # attention layer (Luong et al 2015)
         self.softmax = nn.Softmax(2)
         self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
 
-    def window(self, ht, hs, t, mask): # for local attention
-        if self.type[-1] == "m": # monotonic
+    def window(self, ht, hs, mask, t): # for local attention
+        if self.type == "global":
+            return hs, mask, None
+        if self.type[-1] == "m": # local-m (monotonic)
             p0 = max(0, min(t - self.window_size, hs.size(1) - self.window_size))
             p1 = min(hs.size(1), t + 1 + self.window_size)
             return hs[:, p0:p1], mask[0][:, p0:p1], None
-        # if self.type[-1] == "p": # predicative
-        s = Tensor(mask[1]) # source sequence length
-        pt = s * torch.sigmoid(self.Vp(torch.tanh(self.Wp(ht)))).view(-1) # aligned position
-        hs_w, mask_w = [], []
-        k = [] # truncated Gaussian distribution as kernel function
-        for i in range(BATCH_SIZE):
-            p, seq_len, min_len = int(s[i].item()), mask[1][i], mask[1][-1]
-            p0 = max(0, min(p - self.window_size, seq_len - self.window_size))
-            p1 = min(seq_len, p + 1 + self.window_size)
-            if min_len < p1 - p0:
-                p0, p1 = 0, min_len
-            hs_w.append(hs[i, p0:p1])
-            mask_w.append(mask[0][i, p0:p1])
-            sd = (p1 - p0) / 2 # standard deviation
-            v = [torch.exp(-(j - pt[i]).pow(2) / (2 * sd ** 2)) for j in range(p0, p1)]
-            k.append(torch.cat(v))
-        hs_w = torch.cat(hs_w).view(BATCH_SIZE, -1, HIDDEN_SIZE)
-        mask_w = torch.cat(mask_w).view(BATCH_SIZE, -1)
-        k = torch.cat(k).view(BATCH_SIZE, 1, -1)
-        return hs_w, mask_w, k
+        if self.type[-1] == "p": # local-p (predicative)
+            s = Tensor(mask[1]) # source sequence length
+            pt = s * torch.sigmoid(self.Vp(torch.tanh(self.Wp(ht)))).view(-1) # aligned position
+            hs_w, mask_w = [], []
+            k = [] # truncated Gaussian distribution as kernel function
+            for i in range(BATCH_SIZE):
+                p, seq_len, min_len = int(s[i].item()), mask[1][i], mask[1][-1]
+                p0 = max(0, min(p - self.window_size, seq_len - self.window_size))
+                p1 = min(seq_len, p + 1 + self.window_size)
+                if min_len < p1 - p0:
+                    p0, p1 = 0, min_len
+                hs_w.append(hs[i, p0:p1])
+                mask_w.append(mask[0][i, p0:p1])
+                sd = (p1 - p0) / 2 # standard deviation
+                v = [torch.exp(-(j - pt[i]).pow(2) / (2 * sd ** 2)) for j in range(p0, p1)]
+                k.append(torch.cat(v))
+            hs_w = torch.cat(hs_w).view(BATCH_SIZE, -1, HIDDEN_SIZE)
+            mask_w = torch.cat(mask_w).view(BATCH_SIZE, -1)
+            k = torch.cat(k).view(BATCH_SIZE, 1, -1)
+            return hs_w, mask_w, k
 
     def align(self, ht, hs, mask, k):
+        # content-based function [B, 1, H] @ [B, H, L] = [B, 1, L]
         if self.method == "dot":
             a = ht.bmm(hs.transpose(1, 2))
         elif self.method == "general":
             a = ht.bmm(self.Wa(hs).transpose(1, 2))
         elif self.method == "concat":
             pass # TODO
-        a = a.masked_fill(mask, -10000) # masking in log space
-        a = self.softmax(a) # [B, 1, H] @ [B, H, L] = [B, 1, L]
+        a = self.softmax(a.masked_fill(mask.unsqueeze(1), -10000))
         if self.type == "local-p":
             a = a * k
         return a # alignment vector as attention weights
 
-    def forward(self, ht, hs, t, mask):
-        if self.type in ("local-m", "local-p"):
-            hs, mask, k = self.window(ht, hs, t, mask)
-        else:
-            mask, k = mask[0], None
-        a = self.align(ht, hs, mask, k)
-        c = a.bmm(hs) # context vector [B, 1, L] @ [B, L, H] = [B, 1, H]
-        v = torch.tanh(self.Wc(torch.cat((c, ht), 2)))
-        self.a = a
-        self.v = v
-        return v # attention vector as attentional hidden state
+    def forward(self, ht, hs, mask, t):
+        hs, mask, k = self.window(ht, hs, mask, t)
+        self.w = self.align(ht, hs, mask, k)
+        c = self.w.bmm(hs) # context vector [B, 1, L] @ [B, L, H] = [B, 1, H]
+        self.v = torch.tanh(self.Wc(torch.cat((c, ht), 2)))
+        return self.v # attention vector as attentional hidden state
