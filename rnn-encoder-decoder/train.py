@@ -1,5 +1,6 @@
 from model import *
 from utils import *
+from dataloader import *
 
 def load_data():
     data = dataloader()
@@ -8,18 +9,18 @@ def load_data():
     x_wti = load_tkn_to_idx(sys.argv[3]) # source word_to_idx
     y_wti = load_tkn_to_idx(sys.argv[4]) # target word_to_idx
     print("loading %s..." % sys.argv[5])
-    fo = open(sys.argv[5], "r")
+    fo = open(sys.argv[5])
     for line in fo:
         x, y = line.strip().split("\t")
         x = [x.split(":") for x in x.split(" ")]
         y = [int(x) for x in y.split(" ")]
         xc, xw = zip(*[(list(map(int, xc.split("+"))), int(xw)) for xc, xw in x])
-        data.append_item(xc = [xc], xw = [xw], y0 = y)
+        data.append_item(xc = xc, xw = xw, y0 = y)
         data.append_row()
     fo.close()
     data.strip()
     for _batch in data.split():
-        xc, xw = data.tensor(_batch.xc, _batch.xw, _batch.lens, eos = True)
+        xc, xw = data.tensor(*_batch.sort(), eos = True)
         _, y0 = data.tensor(None, _batch.y0, eos = True)
         batch.append((xc, xw, y0))
     print("data size: %d" % (len(data.y0)))
