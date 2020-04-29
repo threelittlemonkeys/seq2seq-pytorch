@@ -1,4 +1,4 @@
-# Sequence to Sequence Models in PyTorch
+# Sequence to Sequence Models in PyTorch (work in progress)
 
 Minimal implementations of sequence to sequence models in PyTorch.
 
