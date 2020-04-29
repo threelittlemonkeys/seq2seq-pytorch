@@ -1,4 +1,4 @@
-from parameters import *
+from utils import *
 
 class data():
     def __init__(self):
@@ -12,18 +12,11 @@ class data():
         self.prob = None # probability
         self.attn = None # attention heatmap
 
-    def flatten(self, ls):
-        if HRE:
-            return [list(x) for x in ls for x in x]
-        return [list(x[0]) for x in ls]
-
     def sort(self):
-        xc = self.flatten([x for x in self.xc])
-        xw = self.flatten([x for x in self.xw])
-        self.idx = list(range(len(xw)))
-        self.idx.sort(key = lambda x: -len(xw[x]))
-        xc = [xc[i] for i in self.idx]
-        xw = [xw[i] for i in self.idx]
+        self.idx = list(range(len(self.xw)))
+        self.idx.sort(key = lambda x: -len(self.xw[x]))
+        xc = [self.xc[i] for i in self.idx]
+        xw = [self.xw[i] for i in self.idx]
         lens = [len(x) for x in (self.xw if HRE else xw)]
         return xc, xw, lens
 
@@ -61,14 +54,20 @@ class dataloader():
         self.xw.pop()
         self.y0.pop()
 
+    @staticmethod
+    def flatten(ls):
+        if HRE:
+            return [list(x) for x in ls for x in x]
+        return [list(*x) for x in ls]
+
     def split(self): # split into batches
         for i in range(0, len(self.y0), BATCH_SIZE):
             batch = data()
             j = i + min(BATCH_SIZE, len(self.x0) - i)
-            batch.x0 = self.x0[i:j]
-            batch.x1 = self.x1[i:j]
-            batch.xc = self.xc[i:j]
-            batch.xw = self.xw[i:j]
+            batch.x0 = self.flatten(self.x0[i:j])
+            batch.x1 = self.flatten(self.x1[i:j])
+            batch.xc = self.flatten(self.xc[i:j])
+            batch.xw = self.flatten(self.xw[i:j])
             batch.y0 = self.y0[i:j]
             yield batch
 
