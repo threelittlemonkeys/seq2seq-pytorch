@@ -64,7 +64,7 @@ class dataloader():
         for i in range(0, len(self.y0), BATCH_SIZE):
             batch = data()
             j = i + min(BATCH_SIZE, len(self.x0) - i)
-            batch.x0 = self.flatten(self.x0[i:j])
+            batch.x0 = self.x0[i:j]
             batch.x1 = self.flatten(self.x1[i:j])
             batch.xc = self.flatten(self.xc[i:j])
             batch.xw = self.flatten(self.xw[i:j])

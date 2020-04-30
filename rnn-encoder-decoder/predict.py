@@ -18,8 +18,7 @@ def run_model(model, data, itw):
         for batch in data.split():
             xc, xw, lens = batch.sort()
             xc, xw = data.tensor(xc, xw, lens, eos = True)
-            b = len(batch.x0) # batch size
-            t = 0 # time step
+            b, t = len(xw), 0 # batch size, time step
             eos = [False for _ in xw] # EOS states
             mask, lens = maskset(xw)
             model.dec.hs = model.enc(b, xc, xw, lens)
@@ -27,25 +26,23 @@ def run_model(model, data, itw):
             yi = LongTensor([[SOS_IDX]] * b)
             if model.dec.feed_input:
                 model.dec.attn.v = zeros(b, 1, HIDDEN_SIZE)
-            batch.attn = [["", *batch.x1[i], EOS] for i in range(len(lens))]
+            batch.y1 = [[] for _ in range(b)]
+            batch.prob = [0 for _ in range(b)]
+            batch.attn = [[["", *batch.x1[i], EOS]] for i in range(b)]
             while sum(eos) < len(eos) and t < MAX_LEN:
                 yo = model.dec(yi, mask, t)
-                args = (model.dec, yo, batch, itw, eos, lens)
-                # TODO
-                yi = greedy_search(*args) if BEAM_SIZE == 1 else beam_search(*args, t)
-            data.y1.extend(batch.y1)
-            data.prob.extend(batch.prob)
-            data.attn.extend(batch.attn)
-        data.unsort()
-        if VERBOSE:
-            print()
-            for i, x in filter(lambda x: not x[0] % BEAM_SIZE, enumerate(data.attn)):
-                print("attn[%d] =" % (i // BEAM_SIZE))
-                print(mat2csv(x, rh = True))
-        for i, (x0, y0, y1) in enumerate(zip(data.x0, data.y0, data.y1)):
-            if not i % BEAM_SIZE: # use the best candidate from each beam
-                y1.pop() # remove EOS token
-                yield x0, y0, y1
+                args = (model.dec, batch, itw, eos, lens, yo)
+                yi = beam_search(*args, t) if BEAM_SIZE > 1 else greedy_search(*args)
+            batch.unsort()
+            if VERBOSE:
+                print()
+                for i, x in filter(lambda x: not x[0] % BEAM_SIZE, enumerate(batch.attn)):
+                    print("attn[%d] =" % (i // BEAM_SIZE))
+                    print(mat2csv(x, rh = True))
+            for i, (x0, y0, y1) in enumerate(zip(batch.x0, batch.y0, batch.y1)):
+                if not i % BEAM_SIZE: # use the best candidate from each beam
+                    y1.pop() # remove EOS token
+                    yield x0, y0, y1
 
 def predict(filename, model, x_cti, x_wti, y_itw):
     data = dataloader()
