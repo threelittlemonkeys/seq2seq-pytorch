@@ -27,12 +27,13 @@ def run_model(model, data, itw):
             if model.dec.feed_input:
                 model.dec.attn.v = zeros(b, 1, HIDDEN_SIZE)
             batch.y1 = [[] for _ in range(b)]
-            batch.prob = [0 for _ in range(b)]
-            batch.attn = [[["", *batch.x1[i], EOS]] for i in range(b)]
+            batch.prob = [Tensor([0]) for _ in range(b)]
+            batch.attn = [[["", *batch.x1[i], EOS]] for i in batch.idx]
             while sum(eos) < len(eos) and t < MAX_LEN:
                 yo = model.dec(yi, mask, t)
                 args = (model.dec, batch, itw, eos, lens, yo)
                 yi = beam_search(*args, t) if BEAM_SIZE > 1 else greedy_search(*args)
+                t += 1
             batch.unsort()
             if VERBOSE:
                 print()
@@ -41,7 +42,7 @@ def run_model(model, data, itw):
                     print(mat2csv(x, rh = True))
             for i, (x0, y0, y1) in enumerate(zip(batch.x0, batch.y0, batch.y1)):
                 if not i % BEAM_SIZE: # use the best candidate from each beam
-                    y1.pop() # remove EOS token
+                    y1 = [itw[y] for y in y1[:-1]]
                     yield x0, y0, y1
 
 def predict(filename, model, x_cti, x_wti, y_itw):

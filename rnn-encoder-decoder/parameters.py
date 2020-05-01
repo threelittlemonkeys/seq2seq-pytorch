@@ -16,7 +16,7 @@ DEC_EMBED = {"lookup": 300} # decoder embedding (lookup only)
 HIDDEN_SIZE = 1000
 DROPOUT = 0.5
 LEARNING_RATE = 2e-4
-BEAM_SIZE = 1
+BEAM_SIZE = 3
 VERBOSE = 2 # 0: None, 1: attention heatmap, 2: beam search
 EVAL_EVERY = 10
 SAVE_EVERY = 10
@@ -39,5 +39,5 @@ if CUDA:
     # torch.cuda.set_device(0)
 torch.manual_seed(0) # for reproducibility
 
-NUM_DIGITS = 4 # number of digits to print
+NUM_DIGITS = 4 # number of decimal places to print
 assert BATCH_SIZE % BEAM_SIZE == 0
