@@ -11,7 +11,7 @@ NUM_DIRS = 2 # unidirectional: 1, bidirectional: 2
 NUM_LAYERS = 2
 BATCH_SIZE = 64 # BATCH_SIZE * BEAM_SIZE
 HRE = (UNIT == "sent") # hierarchical recurrent encoding
-EMBED = {"char-rnn": 150, "lookup": 150} # embeddings (char-cnn, char-rnn, lookup, sae)
+EMBED = {"char-rnn": 50} # {"char-rnn": 150, "lookup": 150} # embeddings (char-cnn, char-rnn, lookup, sae)
 HIDDEN_SIZE = 1000
 DROPOUT = 0.5
 LEARNING_RATE = 2e-4
@@ -31,12 +31,12 @@ EOS_IDX = 2
 UNK_IDX = 3
 
 CUDA = torch.cuda.is_available()
-if CUDA:
-    Tensor = torch.cuda.FloatTensor
-    LongTensor = torch.cuda.LongTensor
-    zeros = lambda *x: torch.zeros(*x).cuda()
-    # torch.cuda.set_device(0)
 torch.manual_seed(0) # for reproducibility
+# torch.cuda.set_device(0)
 
-NUM_DIGITS = 4 # number of digits to print
+Tensor = torch.cuda.FloatTensor if CUDA else torch.FloatTensor
+LongTensor = torch.cuda.LongTensor if CUDA else torch.LongTensor
+zeros = lambda *x: torch.zeros(*x).cuda() if CUDA else torch.zeros
+
+NUM_DIGITS = 4 # number of decimal places to print
 assert BATCH_SIZE % BEAM_SIZE == 0

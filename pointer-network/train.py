@@ -1,6 +1,7 @@
 from model import *
 from utils import *
 from evaluate import *
+from dataloader import *
 
 def load_data():
     data = dataloader()
@@ -16,11 +17,11 @@ def load_data():
             x = [x.split(":") for x in x.split(" ")]
             y = [int(y)] if HRE else [int(x) for x in y.split(" ")] + [len(x)]
             xc, xw = zip(*[(list(map(int, xc.split("+"))), int(xw)) for xc, xw in x])
-            data.append_item(xc = [xc], xw = [xw], y0 = y)
+            data.append_item(xc = xc, xw = xw, y0 = y)
         data.append_row()
     data.strip()
     for _batch in data.split():
-        xc, xw = data.tensor(_batch.xc, _batch.xw, _batch.lens, eos = True)
+        xc, xw = data.tensor(*_batch.sort(), eos = True)
         _, y0 = data.tensor(None, _batch.y0)
         batch.append((xc, xw, y0))
     print("data size: %d" % (len(data.y0)))

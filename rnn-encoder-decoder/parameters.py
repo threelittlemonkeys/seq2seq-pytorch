@@ -32,12 +32,12 @@ EOS_IDX = 2
 UNK_IDX = 3
 
 CUDA = torch.cuda.is_available()
-if CUDA:
-    Tensor = torch.cuda.FloatTensor
-    LongTensor = torch.cuda.LongTensor
-    zeros = lambda *x: torch.zeros(*x).cuda()
-    # torch.cuda.set_device(0)
 torch.manual_seed(0) # for reproducibility
+# torch.cuda.set_device(0)
+
+Tensor = torch.cuda.FloatTensor if CUDA else torch.FloatTensor
+LongTensor = torch.cuda.LongTensor if CUDA else torch.LongTensor
+zeros = lambda *x: torch.zeros(*x).cuda() if CUDA else torch.zeros
 
 NUM_DIGITS = 4 # number of decimal places to print
 assert BATCH_SIZE % BEAM_SIZE == 0
