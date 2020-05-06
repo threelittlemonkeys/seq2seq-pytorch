@@ -1,6 +1,7 @@
 from model import *
 from utils import *
 from dataloader import *
+from beamsearch import *
 
 def load_model():
     cti = load_tkn_to_idx(sys.argv[2])
@@ -10,6 +11,7 @@ def load_model():
     load_checkpoint(sys.argv[1], model)
     return model, cti, wti
 
+'''
 def greedy_search(dec, y1, batch, eos, lens):
     bp, by = y1.topk(1)
     y = by.view(-1).tolist()
@@ -56,6 +58,7 @@ def beam_search(dec, y1, batch, eos, lens, t):
             if VERBOSE >= 2:
                 print("best[%d] =" % (k - j), (y, round(p.item(), 4)))
     return LongTensor([next(reversed(x), SOS_IDX) for x in batch.y1]).unsqueeze(1)
+'''
 
 def run_model(model, data):
     with torch.no_grad():
@@ -73,10 +76,6 @@ def run_model(model, data):
             batch.y1 = [[] for _ in range(b)]
             batch.prob = [Tensor([0]) for _ in range(b)]
             batch.attn = [[["", *batch.x1[i], EOS]] for i in batch.idx]
-            '''
-            for i in range(len(batch.lens)): # attention heatmap column headers
-                batch.attn[i].append(["", *(range(batch.lens[i]) if HRE else batch.x1[i]), EOS])
-            '''
             while sum(eos) < len(eos) and t < MAX_LEN:
                 yo = model.dec(yc, yw, mask)
                 args = (model.dec, batch, eos, lens, yo)
