@@ -20,9 +20,9 @@ if __name__ == "__main__": # generate lists of random numbers
             pl[x] = True
             y = sorted(range(len(x)), key = lambda i: x[i])
             print("%s\t%s" % (" ".join(map(str, x)), " ".join(map(str, y))))
+            z += 1
             if z == data_size:
                 break
-            z += 1
 
     if unit == "sent":
         for z0 in range(data_size):
