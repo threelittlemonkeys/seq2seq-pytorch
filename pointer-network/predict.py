@@ -85,10 +85,10 @@ def run_model(model, data):
             batch.unsort()
             if VERBOSE:
                 print()
-                for i, x in filter(lambda x: not x[0] % BEAM_SIZE, enumerate(data.attn)):
+                for i, x in filter(lambda x: not x[0] % BEAM_SIZE, enumerate(batch.attn)):
                     print("attn[%d] =" % (i // BEAM_SIZE))
                     print(mat2csv(x, rh = True))
-            for i, (x0, y0, y1) in enumerate(zip(data.x0, data.y0, data.y1)):
+            for i, (x0, y0, y1) in enumerate(zip(batch.x0, batch.y0, batch.y1)):
                 if not i % BEAM_SIZE: # use the best candidate from each beam
                     y1.pop() # remove EOS token
                     yield x0, y0, y1
