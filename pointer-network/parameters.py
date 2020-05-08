@@ -15,8 +15,8 @@ EMBED = {"char-rnn": 50} # {"char-rnn": 150, "lookup": 150} # embeddings (char-c
 HIDDEN_SIZE = 1000
 DROPOUT = 0.5
 LEARNING_RATE = 2e-4
-BEAM_SIZE = 3
-VERBOSE = 2 # 0: None, 1: attention heatmap, 2: beam search
+BEAM_SIZE = 1
+VERBOSE = 0 # 0: None, 1: attention heatmap, 2: beam search
 EVAL_EVERY = 10
 SAVE_EVERY = 10
 

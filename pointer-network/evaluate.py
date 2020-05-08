@@ -6,7 +6,6 @@ def evaluate(result, summary = False):
     tpfn = defaultdict(int) # true positives + false negatives
     tpfp = defaultdict(int) # true positives + false positives
     for _, y0, y1 in result: # actual value, prediction
-        '''
         # evaluate on a sequence basis
         y0 = tuple(y0)
         y1 = tuple(y1)
@@ -20,6 +19,7 @@ def evaluate(result, summary = False):
             tpfn[y] += 1
         for y in y1:
             tpfp[y] += 1
+        '''
     for y in sorted(tpfn.keys()):
         pr = (tp[y] / tpfp[y]) if tpfp[y] else 0
         rc = (tp[y] / tpfn[y]) if tpfn[y] else 0
