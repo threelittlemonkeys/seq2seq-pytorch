@@ -8,7 +8,7 @@ def greedy_search(dec, batch, eos, lens, yo):
         # eos[i] = (y[i] == EOS_IDX)
         batch.y1[i].append(y[i])
         batch.prob[i] += p[i]
-        batch.attn[i].append([y[i], *dec.attn.w[i, :lens[i]].exp()])
+        batch.attn[i].append([y[i], *dec.attn.w[i][:lens[i]].exp()])
         # batch.attn[i].append([itw[y[i]], *dec.attn.w[i][0][:lens[i]]])
     return yi
 
@@ -28,9 +28,10 @@ def beam_search(dec, batch, eos, lens, yo, t):
                 print("beam[%d][%d][%d] = %s ->" % (t, i, k // BEAM_SIZE, w[0]), *w[1:])
         for p, k in zip(*bp.topk(BEAM_SIZE)): # append n-best candidates
             q = j + k // BEAM_SIZE
-            _y1.append(batch.y1[q] + [by[k]])
+            _y1.append(batch.y1[q] + [by[k].item()])
             _prob.append(p)
-            _attn.append(batch.attn[q] + [[itw[by[k]], *dec.attn.w[q][0][:lens[j]]]])
+            _attn.append(batch.attn[q] + [[by[k].item(), *dec.attn.w[q][:lens[q]].exp()]])
+            # _attn.append(batch.attn[q] + [[itw[by[k]], *dec.attn.w[q][0][:lens[j]]]])
         for k in filter(lambda x: eos[x], range(j, j + BEAM_SIZE)): # append completed sequences
             _y1.append(batch.y1[k][:])
             _prob.append(batch.prob[k])

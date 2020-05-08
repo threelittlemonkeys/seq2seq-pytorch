@@ -29,7 +29,7 @@ def run_model(model, data, itw):
             batch.y1 = [[] for _ in range(b)]
             batch.prob = [Tensor([0]) for _ in range(b)]
             batch.attn = [[["", *batch.x1[i], EOS]] for i in batch.idx]
-            while sum(eos) < len(eos) and t < MAX_LEN:
+            while t < MAX_LEN and sum(eos) < len(eos):
                 yo = model.dec(yi, mask, t)
                 args = (model.dec, batch, itw, eos, lens, yo)
                 yi = beam_search(*args, t) if BEAM_SIZE > 1 else greedy_search(*args)

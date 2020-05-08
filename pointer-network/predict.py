@@ -12,17 +12,6 @@ def load_model():
     return model, cti, wti
 
 '''
-def greedy_search(dec, y1, batch, eos, lens):
-    bp, by = y1.topk(1)
-    y = by.view(-1).tolist()
-    for i, _ in filter(lambda x: not x[1], enumerate(eos)):
-        j = lens[i] # sequence length
-        eos[i] = (y[i] == j - 1 or y[i] in batch.y1[i])
-        batch.y1[i].append(y[i])
-        batch.prob[i] += bp[i]
-        batch.attn[i].append([y[i], *dec.attn.w[i, :j].exp()])
-    return by
-
 def beam_search(dec, y1, batch, eos, lens, t):
     bp, by = y1.topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
     bp += Tensor([-10000 if b else a for a, b in zip(batch.prob, eos)]).unsqueeze(1)
@@ -76,7 +65,7 @@ def run_model(model, data):
             batch.y1 = [[] for _ in range(b)]
             batch.prob = [Tensor([0]) for _ in range(b)]
             batch.attn = [[["", *batch.x1[i], EOS]] for i in batch.idx]
-            while sum(eos) < len(eos) and t < MAX_LEN:
+            while t < MAX_LEN and sum(eos) < len(eos):
                 yo = model.dec(yc, yw, mask)
                 args = (model.dec, batch, eos, lens, yo)
                 yw = beam_search(*args, t) if BEAM_SIZE > 1 else greedy_search(*args)
@@ -107,11 +96,13 @@ def predict(filename, model, cti, wti):
             x1 = tokenize(x0)
             xc = [[cti[c] if c in cti else UNK_IDX for c in w] for w in x1]
             xw = [wti[w] if w in wti else UNK_IDX for w in x1]
-            data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
-        x0, x1, xc, xw, y0 = data.x0[-1], data.x1[-1], data.xc[-1], data.xw[-1], data.y0[-1]
+            data.append_item(x0, x1, xc, xw, y0)
         for _ in range(BEAM_SIZE - 1):
-            data.append_row()
-            data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
+            data.x0.append(data.x0[-1])
+            data.x1.append(data.x1[-1])
+            data.xc.append(data.xc[-1])
+            data.xw.append(data.xw[-1])
+            data.y0.append(data.y0[-1])
         data.append_row()
     data.strip()
     return run_model(model, data)
