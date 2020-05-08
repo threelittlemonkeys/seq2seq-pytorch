@@ -24,11 +24,13 @@ def beam_search(dec, batch, eos, lens, yo, t):
                 q = j + k // BEAM_SIZE
                 w = [(batch.prob[q], *(batch.y1[q][-1:] or [SOS_IDX]))] # previous token
                 w += list(zip(bp, by))[k:k + BEAM_SIZE] # current candidates
-                w = [(round(p.item(), NUM_DIGITS), itw[y]) for p, y in w]
+                w = [(round(p.item(), NUM_DIGITS), y) for p, y in w]
+                # w = [(round(p.item(), NUM_DIGITS), itw[y]) for p, y in w]
                 print("beam[%d][%d][%d] = %s ->" % (t, i, k // BEAM_SIZE, w[0]), *w[1:])
         for p, k in zip(*bp.topk(BEAM_SIZE)): # append n-best candidates
             q = j + k // BEAM_SIZE
             _y1.append(batch.y1[q] + [by[k].item()])
+            # _y1.append(batch.y1[q] + [by[k]])
             _prob.append(p)
             _attn.append(batch.attn[q] + [[by[k].item(), *dec.attn.w[q][:lens[q]].exp()]])
             # _attn.append(batch.attn[q] + [[itw[by[k]], *dec.attn.w[q][0][:lens[j]]]])
@@ -44,7 +46,8 @@ def beam_search(dec, batch, eos, lens, yo, t):
             eos[k] = (_y1[-1] == EOS_IDX)
             if VERBOSE >= 2:
                 print("output[%d][%d][%d] = " % (t, i, k - j), end = "")
-                print(([itw[y] for y in _y1], round(_prob.item(), 4)))
+                print(([y for y in _y1], round(_prob.item(), 4)))
+                # print(([itw[y] for y in _y1], round(_prob.item(), 4)))
         if VERBOSE >= 2:
             print()
     return LongTensor([y[-1] for y in batch.y1]).unsqueeze(1)
