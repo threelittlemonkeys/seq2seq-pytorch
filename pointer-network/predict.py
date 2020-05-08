@@ -11,44 +11,6 @@ def load_model():
     load_checkpoint(sys.argv[1], model)
     return model, cti, wti
 
-'''
-def beam_search(dec, y1, batch, eos, lens, t):
-    bp, by = y1.topk(BEAM_SIZE) # [B * BEAM_SIZE, BEAM_SIZE]
-    bp += Tensor([-10000 if b else a for a, b in zip(batch.prob, eos)]).unsqueeze(1)
-    bp = bp.view(-1, BEAM_SIZE ** 2) # [B, BEAM_SIZE * BEAM_SIZE]
-    by = by.view(-1, BEAM_SIZE ** 2)
-    if t == 0: # remove non-first duplicate beams
-        bp = bp[:, :BEAM_SIZE]
-        by = by[:, :BEAM_SIZE]
-    for i, (p, y) in enumerate(zip(bp, by)): # for each sequence
-        j, y = i * BEAM_SIZE, y.tolist()
-        _y, _p, _a = [], [], []
-        if VERBOSE >= 2:
-            print()
-            for k in range(0, len(p), BEAM_SIZE): # for each beam
-                q = j + k // BEAM_SIZE
-                w = [(batch.y1[q], batch.prob[q])] # previous token
-                w += list(zip(y, p))[k:k + BEAM_SIZE] # current candidates
-                w = [(a, round(b.item(), 4)) for a, b in w]
-                print("beam[%d][%d][%d] =" % (i, t, k // BEAM_SIZE), w[0], "->", *w[1:])
-        for p, k in zip(*p.topk(BEAM_SIZE)): # n-best candidates
-            q = j + k // BEAM_SIZE
-            _y.append(batch.y1[q] + [y[k]])
-            _p.append(batch.prob[q] + p)
-            _a.append(batch.attn[q] + [[y[k], *dec.attn.w[q][:lens[q]].exp()]])
-        for k in filter(lambda x: eos[j + x], range(BEAM_SIZE)): # completed sequences
-            _y.append(batch.y1[j + k])
-            _p.append(batch.prob[j + k])
-            _a.append(batch.attn[j + k])
-        topk = sorted(zip(_y, _p, _a), key = lambda x: -x[1])[:BEAM_SIZE]
-        for k, (y, p, a) in enumerate(topk, j):
-            eos[k] = (y[-1] == lens[j] - 1 or y[-1] in y[:-1])
-            batch.y1[k], batch.prob[k], batch.attn[k] = y, p, a
-            if VERBOSE >= 2:
-                print("best[%d] =" % (k - j), (y, round(p.item(), 4)))
-    return LongTensor([next(reversed(x), SOS_IDX) for x in batch.y1]).unsqueeze(1)
-'''
-
 def run_model(model, data):
     with torch.no_grad():
         model.eval()
