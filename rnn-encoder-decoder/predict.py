@@ -7,7 +7,7 @@ def load_model():
     x_cti = load_tkn_to_idx(sys.argv[2])
     x_wti = load_tkn_to_idx(sys.argv[3])
     y_itw = load_idx_to_tkn(sys.argv[4])
-    model = rnn_enc_dec(len(x_cti), len(x_wti), len(y_itw))
+    model = rnn_encoder_decoder(len(x_cti), len(x_wti), len(y_itw))
     print(model)
     load_checkpoint(sys.argv[1], model)
     return model, x_cti, x_wti, y_itw

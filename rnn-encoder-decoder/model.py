@@ -1,7 +1,7 @@
 from utils import *
 from embedding import embed
 
-class rnn_enc_dec(nn.Module):
+class rnn_encoder_decoder(nn.Module):
     def __init__(self, x_cti_size, x_wti_size, y_wti_size):
         super().__init__()
 
