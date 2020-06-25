@@ -56,7 +56,7 @@ def predict(filename, model, x_cti, x_wti, y_itw):
         x1 = tokenize(x0, UNIT)
         xc = [[x_cti[c] if c in x_cti else UNK_IDX for c in w] for w in x1]
         xw = [x_wti[w] if w in x_wti else UNK_IDX for w in x1]
-        data.append_item(x0, x1, xc, xw)
+        data.append_item(x0, x1, xc, xw, y0)
         for _ in range(BEAM_SIZE - 1):
             data.append_row()
             data.append_item(x0, x1, xc, xw, y0)
