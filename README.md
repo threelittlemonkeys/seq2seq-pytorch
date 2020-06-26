@@ -11,6 +11,8 @@ Minimal implementations of sequence to sequence models in PyTorch.
 
 Rami Al-Rfou, Dokook Choe, Noah Constant, Mandy Guo, Llion Jones. [Character-Level Language Modeling with Deeper Self-Attention.](https://arxiv.org/abs/1808.04444) arXiv:1808.04444.
 
+Philip Arthur, Graham Neubig, Satoshi Nakamura. 2016. [Incorporating Discrete Translation Lexicons into Neural Machine Translation.](https://arxiv.org/abs/1606.02006) In EMNLP.
+
 Jimmy Lei Ba, Jamie Ryan Kiros, Geoffrey E. Hinton. 2016. [Layer Normalization.](https://arxiv.org/abs/1607.06450) arXiv:1607.06450.
 
 Dzmitry Bahdanau, Kyunghyun Cho, Yoshua Bengio. 2015. [Neural Machine Translation by Jointly Learning to Align and Translate.](https://arxiv.org/abs/1409.0473) arXiv:1409.0473.
@@ -25,13 +27,13 @@ Andrew M. Dai, Quoc V. Le. [Semi-supervised Sequence Learning.](https://arxiv.or
 
 Zihang Dai, Zhilin Yang, Yiming Yang, Jaime Carbonell, Quoc V. Le, Ruslan Salakhutdinov. 2019. [Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context.](https://arxiv.org/abs/1901.02860) In ACL.
 
-Jiachen Du, Wenjie Li , Yulan He , Ruifeng Xu , Lidong Bing, Xuan Wang. 2018. [Variational Autoregressive Decoder for Neural Response Generation.](https://aclweb.org/anthology/D18-1354) In EMNLP.
+Jiachen Du, Wenjie Li, Yulan He, Ruifeng Xu, Lidong Bing, Xuan Wang. 2018. [Variational Autoregressive Decoder for Neural Response Generation.](https://aclweb.org/anthology/D18-1354) In EMNLP.
 
 Jonas Gehring, Michael Auli, David Grangier, Denis Yarats, Yann N. Dauphin. 2017. [Convolutional Sequence to Sequence Learning.](https://arxiv.org/abs/1705.03122) arXiv:1705.03122.
 
 Alex Graves. 2013. [Generating Sequences With Recurrent Neural Networks.](https://arxiv.org/abs/1308.0850) arXiv:1308.0850.
 
-Jiatao Gu, Zhengdong Lu, Hang Li, Victor O.K. Li. 2016. [Incorporating Copying Mechanism in Sequence-to-Sequence Learning.](https://arxiv.org/abs/1603.06393) arXiv:1603.06393.
+Jiatao Gu, Zhengdong Lu, Hang Li, Victor O.K. Li. 2016. [Incorporating Copying Mechanism in Sequence-to-Sequence Learning.](https://arxiv.org/abs/1603.06393) In ACL.
 
 Jeremy Hylton. 1993. [The Complete Works of William Shakespeare.](http://shakespeare.mit.edu) http://shakespeare.mit.edu.
 
