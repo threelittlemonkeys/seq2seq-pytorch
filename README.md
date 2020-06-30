@@ -51,6 +51,8 @@ Xuezhe Ma, Zecong Hu, Jingzhou Liu, Nanyun Peng, Graham Neubig, Eduard Hovy. 201
 
 Hideya Mino, Masao Utiyama, Eiichiro Sumita, Takenobu Tokunaga. 2017. [Key-value Attention Mechanism for Neural Machine Translation.](http://aclweb.org/anthology/I17-2049) In Proceedings of the 8th International Joint Conference on Natural Language Processing.
 
+Chan Young Park, Yulia Tsvetkov. [Learning to Generate Word- and Phrase-Embeddings for Efficient Phrase-Based Neural Machine Translation.](https://www.aclweb.org/anthology/D19-5626.pdf) In Proceedings of the 3rd Workshop on Neural Generation and Translation.
+
 Ofir Press, Lior Wolf. 2016. [Using the Output Embedding to Improve Language Models.](https://arxiv.org/abs/1608.05859) arXiv:1608.05859.
 
 Abigail See, Peter J. Liu, Christopher D. Manning. 2017. [Get To The Point: Summarization with Pointer-Generator Networks.](https://arxiv.org/abs/1704.04368) arXiv:1704.04368.
