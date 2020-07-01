@@ -95,7 +95,7 @@ class decoder(nn.Module):
         y = self.softmax(h)
         return y
 
-class attn(nn.Module): # attention layer (Luong et al 2015)
+class attn(nn.Module):
     def __init__(self):
         super().__init__()
         self.v = None # attention vector (for input feeding)
