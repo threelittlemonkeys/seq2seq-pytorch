@@ -14,6 +14,7 @@ HRE = False # (UNIT == "sent") # hierarchical recurrent encoding
 ENC_EMBED = {"lookup": 300} # encoder embedding (char-cnn, char-rnn, lookup, sae)
 DEC_EMBED = {"lookup": 300} # decoder embedding (lookup only)
 HIDDEN_SIZE = 1000
+COPY = True # copying mechanism (Gu et al 2016)
 DROPOUT = 0.5
 LEARNING_RATE = 2e-4
 BEAM_SIZE = 1
@@ -21,15 +22,10 @@ VERBOSE = 0 # 0: None, 1: attention heatmap, 2: beam search
 EVAL_EVERY = 10
 SAVE_EVERY = 10
 
-PAD = "<PAD>" # padding
-EOS = "<EOS>" # end of sequence
-SOS = "<SOS>" # start of sequence
-UNK = "<UNK>" # unknown token
-
-PAD_IDX = 0
-SOS_IDX = 1
-EOS_IDX = 2
-UNK_IDX = 3
+PAD, PAD_IDX = "<PAD>", 0 # padding
+SOS, SOS_IDX = "<SOS>", 1 # start of sequence
+EOS, EOS_IDX = "<EOS>", 2 # end of sequence
+UNK, UNK_IDX = "<UNK>", 3 # unknown token
 
 CUDA = torch.cuda.is_available()
 torch.manual_seed(0) # for reproducibility

@@ -17,9 +17,8 @@ class rnn_encoder_decoder(nn.Module):
         mask, lens = maskset(xw)
         self.dec.M = self.enc(b, xc, xw, lens)
         self.dec.hidden = self.enc.hidden
+        self.dec.attn.v = zeros(b, 1, HIDDEN_SIZE)
         yi = LongTensor([SOS_IDX] * b)
-        if self.dec.feed_input:
-            self.dec.attn.v = zeros(b, 1, HIDDEN_SIZE)
         for t in range(y0.size(1)):
             yo = self.dec(yi.unsqueeze(1), mask, t)
             yi = y0[:, t] # teacher forcing
@@ -70,12 +69,11 @@ class decoder(nn.Module):
         super().__init__()
         self.M = None # source hidden states
         self.hidden = None # decoder hidden states
-        self.feed_input = True # input feeding
 
         # architecture
         self.embed = embed(DEC_EMBED, 0, wti_size)
         self.rnn = getattr(nn, RNN_TYPE)(
-            input_size = self.embed.dim + (HIDDEN_SIZE if self.feed_input else 0),
+            input_size = self.embed.dim + HIDDEN_SIZE, # input feeding
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -89,8 +87,7 @@ class decoder(nn.Module):
 
     def forward(self, y1, mask, t):
         x = self.embed(None, y1)
-        if self.feed_input:
-            x = torch.cat((x, self.attn.v), 2)
+        x = torch.cat((x, self.attn.v), 2) # input feeding
         h, _ = self.rnn(x, self.hidden)
         if self.attn:
             h = self.attn(h, self.M, mask, t)
