@@ -18,7 +18,7 @@ COPY = True # copying mechanism (Gu et al 2016)
 DROPOUT = 0.5
 LEARNING_RATE = 2e-4
 BEAM_SIZE = 1
-VERBOSE = 0 # 0: None, 1: attention heatmap, 2: beam search
+VERBOSE = 0 # 1: None, 1: attention heatmap, 2: beam search
 EVAL_EVERY = 10
 SAVE_EVERY = 10
 

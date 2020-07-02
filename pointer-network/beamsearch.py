@@ -7,7 +7,7 @@ def greedy_search(dec, batch, eos, lens, yo):
         eos[i] = (y[i] == lens[i] - 1 or y[i] in batch.y1[i])
         batch.y1[i].append(y[i])
         batch.prob[i] += p[i]
-        batch.attn[i].append([y[i], *dec.attn.w[i][:lens[i]].exp()])
+        batch.attn[i].append([y[i], *dec.attn.Wa[i][:lens[i]].exp()])
     return yi
 
 def beam_search(dec, batch, eos, lens, yo, t):
@@ -28,7 +28,7 @@ def beam_search(dec, batch, eos, lens, yo, t):
             q = j + k // BEAM_SIZE
             _y1.append(batch.y1[q] + [by[k].item()])
             _prob.append(p)
-            _attn.append(batch.attn[q] + [[by[k].item(), *dec.attn.w[q][:lens[q]].exp()]])
+            _attn.append(batch.attn[q] + [[by[k].item(), *dec.attn.Wa[q][:lens[q]].exp()]])
         for k in filter(lambda x: eos[x], range(j, j + BEAM_SIZE)): # append completed sequences
             _y1.append(batch.y1[k][:])
             _prob.append(batch.prob[k])
