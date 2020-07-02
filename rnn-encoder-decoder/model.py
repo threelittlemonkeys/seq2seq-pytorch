@@ -88,8 +88,7 @@ class decoder(nn.Module):
         x = self.embed(None, y1)
         x = torch.cat((x, self.attn.Va), 2) # input feeding
         h, _ = self.rnn(x, self.hidden)
-        if self.attn:
-            h = self.attn(h, self.M, mask)
+        h = self.attn(h, self.M, mask)
         h = self.out(h).squeeze(1)
         y = self.softmax(h)
         return y
