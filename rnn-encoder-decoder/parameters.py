@@ -14,11 +14,11 @@ HRE = False # (UNIT == "sent") # hierarchical recurrent encoding
 ENC_EMBED = {"lookup": 300} # encoder embedding (char-cnn, char-rnn, lookup, sae)
 DEC_EMBED = {"lookup": 300} # decoder embedding (lookup only)
 HIDDEN_SIZE = 1000
-COPY = True # copying mechanism (Gu et al 2016)
+COPY = True # copying mechanism
 DROPOUT = 0.5
 LEARNING_RATE = 2e-4
 BEAM_SIZE = 1
-VERBOSE = 0 # 1: None, 1: attention heatmap, 2: beam search
+VERBOSE = 0 # 0: None, 1: attention heatmap, 2: beam search
 EVAL_EVERY = 10
 SAVE_EVERY = 10
 

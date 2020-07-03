@@ -17,7 +17,8 @@ class rnn_encoder_decoder(nn.Module):
         mask, lens = maskset(xw)
         self.dec.M = self.enc(b, xc, xw, lens)
         self.dec.hidden = self.enc.hidden
-        self.dec.attn.Va = zeros(b, 1, HIDDEN_SIZE)
+        self.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
+        self.dec.copy.V = zeros(b, 1, HIDDEN_SIZE)
         yi = LongTensor([SOS_IDX] * b)
         for t in range(y0.size(1)):
             yo = self.dec(yi.unsqueeze(1), mask)
@@ -72,7 +73,7 @@ class decoder(nn.Module):
         # architecture
         self.embed = embed(DEC_EMBED, 0, wti_size)
         self.rnn = getattr(nn, RNN_TYPE)(
-            input_size = self.embed.dim + HIDDEN_SIZE, # input feeding
+            input_size = self.embed.dim + HIDDEN_SIZE * (1 + COPY),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -81,26 +82,27 @@ class decoder(nn.Module):
             bidirectional = (NUM_DIRS == 2)
         )
         self.attn = attn()
-        self.out = nn.Linear(HIDDEN_SIZE, wti_size)
+        self.copy = copy()
+        self.Wo = nn.Linear(HIDDEN_SIZE, wti_size)
         self.softmax = nn.LogSoftmax(1)
 
     def forward(self, y1, mask):
         x = self.embed(None, y1)
-        x = torch.cat((x, self.attn.Va), 2) # input feeding
+        x = torch.cat((x, self.attn.V, self.copy.V), 2) # input feeding
         h, _ = self.rnn(x, self.hidden)
         h = self.attn(h, self.M, mask)
-        h = self.out(h).squeeze(1)
+        h = self.Wo(h).squeeze(1)
         y = self.softmax(h)
         return y
 
-class attn(nn.Module):
+class attn(nn.Module): # attention mechanism
     def __init__(self):
         super().__init__()
 
         # architecture
+        self.V = None # attentive read
         self.Wa = None # attention weights
         self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
-        self.Va = None # attention vector
 
     def align(self, ht, hs, mask):
         a = ht.bmm(hs.transpose(1, 2)) # [B, 1, H] @ [B, H, L] = [B, 1, L]
@@ -110,5 +112,13 @@ class attn(nn.Module):
     def forward(self, ht, hs, mask):
         self.Wa = self.align(ht, hs, mask)
         c = self.Wa.bmm(hs) # context vector [B, 1, L] @ [B, L, H] = [B, 1, H]
-        self.Va = torch.tanh(self.Wc(torch.cat((c, ht), 2)))
-        return self.Va # attention vector
+        self.V = torch.tanh(self.Wc(torch.cat((c, ht), 2)))
+        return self.V
+
+class copy(nn.Module): # copying mechanism
+    def __init__(self):
+        super().__init__()
+        self.V = None # selective read
+
+    def forward(self):
+        pass
