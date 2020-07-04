@@ -24,6 +24,7 @@ def run_model(model, data, itw):
             model.dec.M = model.enc(b, xc, xw, lens)
             model.dec.hidden = model.enc.hidden
             model.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
+            model.dec.copy.V = zeros(b, 1, HIDDEN_SIZE)
             yi = LongTensor([[SOS_IDX]] * b)
             batch.y1 = [[] for _ in range(b)]
             batch.prob = [Tensor([0]) for _ in range(b)]
