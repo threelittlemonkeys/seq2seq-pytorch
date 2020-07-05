@@ -15,7 +15,7 @@ class rnn_encoder_decoder(nn.Module):
         loss = 0
         self.zero_grad()
         mask, lens = maskset(xw)
-        self.dec.M = self.enc(b, xc, xw, lens)
+        self.dec.M, self.dec.prev = self.enc(b, xc, xw, lens)
         self.dec.hidden = self.enc.hidden
         self.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
         self.dec.copy.V = zeros(b, 1, HIDDEN_SIZE)
@@ -60,20 +60,23 @@ class encoder(nn.Module):
         self.hidden = self.init_state(b)
         x = self.embed(xc, xw)
         x = nn.utils.rnn.pack_padded_sequence(x, lens, batch_first = True)
-        h, _ = self.rnn(x, self.hidden)
+        h, s = self.rnn(x, self.hidden)
+        s = s[RNN_TYPE == "LSTM"][-NUM_DIRS:] # final hidden state
+        s = torch.cat([_ for _ in s], 1).view(b, 1, -1)
         h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first = True)
-        return h
+        return h, s
 
 class decoder(nn.Module):
     def __init__(self, wti_size):
         super().__init__()
         self.M = None # source hidden states
+        self.prev = None # previous decoder output
         self.hidden = None # decoder hidden states
 
         # architecture
         self.embed = embed(DEC_EMBED, 0, wti_size)
         self.rnn = getattr(nn, RNN_TYPE)(
-            input_size = self.embed.dim + HIDDEN_SIZE * (1 + COPY),
+            input_size = self.embed.dim + HIDDEN_SIZE * (1 + 0),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -88,11 +91,12 @@ class decoder(nn.Module):
 
     def forward(self, y1, mask):
         x = self.embed(None, y1)
-        x = torch.cat((x, self.attn.V, self.copy.V), 2) # input feeding
+        # self.attn.Va = self.attn(self.prev, self.M, mask)
+        x = torch.cat((x, self.attn.V), 2) # input feeding
         h, _ = self.rnn(x, self.hidden)
+        # self.prev = h
         h = self.attn(h, self.M, mask)
-        # TODO
-        self.copy(h, self.M, mask)
+        # self.copy(h, self.M, mask)
         h = self.Wo(h).squeeze(1)
         y = self.softmax(h)
         return y
@@ -104,7 +108,7 @@ class attn(nn.Module): # attention mechanism
         # architecture
         self.Wa = None # attention weights
         self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
-        self.V = None # attention vector
+        self.V = None # context vector
 
     def align(self, ht, hs, mask):
         a = ht.bmm(hs.transpose(1, 2)) # attention scores
@@ -113,8 +117,8 @@ class attn(nn.Module): # attention mechanism
 
     def forward(self, ht, hs, mask):
         self.Wa = self.align(ht, hs, mask)
-        c = self.Wa.bmm(hs) # context vector [B, 1, L] @ [B, L, H] = [B, 1, H]
-        self.V = torch.tanh(self.Wc(torch.cat((c, ht), 2)))
+        self.V = self.Wa.bmm(hs) # [B, 1, L] @ [B, L, H] = [B, 1, H]
+        self.V = torch.tanh(self.Wc(torch.cat((self.V, ht), 2)))
         return self.V
 
 class copy(nn.Module): # copying mechanism
@@ -126,5 +130,4 @@ class copy(nn.Module): # copying mechanism
         self.V = None # selective read
 
     def forward(self, ht, hs, mask):
-        exit()
         pass
