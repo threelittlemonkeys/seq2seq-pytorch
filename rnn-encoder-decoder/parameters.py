@@ -6,7 +6,8 @@ import torch.nn.functional as F
 UNIT = "char" # unit of tokenization (char, word)
 MIN_LEN = 1 # minimum sequence length for training
 MAX_LEN = 50 # maximum sequence length for training and decoding
-RNN_TYPE = "LSTM" # LSTM or GRU
+RNN_TYPE = "LSTM" # LSTM, GRU
+METHOD = "attn" # attn, copy
 NUM_DIRS = 2 # unidirectional: 1, bidirectional: 2
 NUM_LAYERS = 2
 BATCH_SIZE = 64 * 1 # BATCH_SIZE * BEAM_SIZE
@@ -14,7 +15,6 @@ HRE = False # (UNIT == "sent") # hierarchical recurrent encoding
 ENC_EMBED = {"lookup": 300} # encoder embedding (char-cnn, char-rnn, lookup, sae)
 DEC_EMBED = {"lookup": 300} # decoder embedding (lookup only)
 HIDDEN_SIZE = 1000
-COPY = True # copying mechanism
 DROPOUT = 0.5
 LEARNING_RATE = 2e-4
 BEAM_SIZE = 1
