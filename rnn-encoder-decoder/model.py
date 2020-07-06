@@ -103,13 +103,15 @@ class decoder(nn.Module):
             return y
 
         if METHOD == "copy":
-            self.attn.V = self.attn(self.h, self.M, mask)
+            self.attn(self.h, self.M, mask)
             x = torch.cat((x, self.attn.V), 2)
             self.h, _ = self.rnn(x, self.H)
             g = self.Wo(self.h).squeeze(1) # generation scores
             c = self.copy(self.h, self.M, mask) # copy scores
-            y = torch.cat([g, c], 1)
-            return
+            p = self.softmax(torch.cat([g, c], 1))
+            g, c = p.split([g.size(1), c.size(1)], 1)
+            # TODO
+            return p
 
 class attn(nn.Module): # attention mechanism
     def __init__(self):
@@ -123,7 +125,8 @@ class attn(nn.Module): # attention mechanism
 
     def forward(self, ht, hs, mask):
         self.Wa = ht.bmm(hs.transpose(1, 2)) # [B, 1, H] @ [B, H, L] = [B, 1, L]
-        self.Wa = F.softmax(self.Wa.masked_fill(mask.unsqueeze(1), -10000), 2)
+        self.Wa = self.Wa.masked_fill(mask.unsqueeze(1), -10000)
+        self.Wa = F.softmax(self.Wa, 2)
         self.V = self.Wa.bmm(hs) # [B, 1, L] @ [B, L, H] = [B, 1, H]
         if METHOD == "attn":
             self.V = self.Wc(torch.cat((self.V, ht), 2)).tanh()
@@ -135,7 +138,7 @@ class copy(nn.Module): # copying mechanism
 
         # architecture
         self.Wc = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
-        self.V = None # selective read
+        self.V = None
 
     def forward(self, ht, hs, mask):
         hs = hs[:, :-1] # remove EOS token [B, L - 1, H]
