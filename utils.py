@@ -29,29 +29,36 @@ def save_data(filename, data):
 
 def load_tkn_to_idx(filename):
     print("loading %s" % filename)
-    tkn_to_idx = {}
+    tti = {}
     fo = open(filename)
     for line in fo:
         line = line[:-1]
-        tkn_to_idx[line] = len(tkn_to_idx)
+        tti[line] = len(tti)
     fo.close()
-    return tkn_to_idx
+    return tti
 
 def load_idx_to_tkn(filename):
     print("loading %s" % filename)
-    idx_to_tkn = []
+    itt = []
     fo = open(filename)
     for line in fo:
         line = line[:-1]
-        idx_to_tkn.append(line)
+        itt.append(line)
     fo.close()
-    return idx_to_tkn
+    return itt
 
-def save_tkn_to_idx(filename, tkn_to_idx):
+def save_tkn_to_idx(filename, tti):
     fo = open(filename, "w")
-    for tkn, _ in sorted(tkn_to_idx.items(), key = lambda x: x[1]):
+    for tkn, _ in sorted(tti.items(), key = lambda x: x[1]):
         fo.write("%s\n" % tkn)
     fo.close()
+
+def tgt_to_src(x_wti, y_wti):
+    tts = {}
+    for w, i in sorted(y_wti.items(), key = lambda x: x[1]):
+        if w in x_wti:
+            tts[i] = x_wti[w]
+    return tts
 
 def load_checkpoint(filename, model = None):
     print("loading %s" % filename)

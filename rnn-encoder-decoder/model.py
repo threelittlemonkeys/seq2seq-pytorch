@@ -73,6 +73,7 @@ class decoder(nn.Module):
         self.M = None # encoder hidden states
         self.H = None # decoder hidden states
         self.h = None # decoder output
+        self.tts = None # target to source vocab
 
         # architecture
         self.embed = embed(DEC_EMBED, 0, wti_size)
@@ -99,14 +100,14 @@ class decoder(nn.Module):
         if METHOD == "attn":
             x = torch.cat((x, self.attn.V), 2) # input feeding
             h, _ = self.rnn(x, self.H)
-            self.attn(h, self.M, mask)
+            self.attn.V = self.attn(h, self.M, mask)
             h = self.Wc(torch.cat((self.attn.V, h), 2)).tanh()
             h = self.Wo(h).squeeze(1)
             y = self.softmax(h)
             return y
 
         if METHOD == "copy":
-            self.attn(self.h, self.M, mask)
+            self.attn.V = self.attn(self.h, self.M, mask)
             x = torch.cat((x, self.attn.V), 2)
             self.h, _ = self.rnn(x, self.H)
             g = self.Wo(self.h).squeeze(1) # generation scores
@@ -125,11 +126,10 @@ class attn(nn.Module): # attention mechanism
         self.V = None # context vector
 
     def forward(self, ht, hs, mask):
-        self.Wa = ht.bmm(hs.transpose(1, 2)) # [B, 1, H] @ [B, H, L] = [B, 1, L]
-        self.Wa = self.Wa.masked_fill(mask.unsqueeze(1), -10000)
-        self.Wa = F.softmax(self.Wa, 2)
-        self.V = self.Wa.bmm(hs) # [B, 1, L] @ [B, L, H] = [B, 1, H]
-        return self.V
+        score = ht.bmm(hs.transpose(1, 2)) # [B, 1, H] @ [B, H, L] = [B, 1, L]
+        score = score.masked_fill(mask.unsqueeze(1), -10000)
+        self.Wa = F.softmax(score, 2)
+        return self.Wa.bmm(hs) # [B, 1, L] @ [B, L, H] = [B, 1, H]
 
 class copy(nn.Module): # copying mechanism
     def __init__(self):
