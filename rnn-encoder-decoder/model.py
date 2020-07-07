@@ -86,6 +86,8 @@ class decoder(nn.Module):
             bidirectional = (NUM_DIRS == 2)
         )
         self.attn = attn()
+        if METHOD == "attn":
+            self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
         if METHOD == "copy":
             self.copy = copy()
         self.Wo = nn.Linear(HIDDEN_SIZE, wti_size)
@@ -97,7 +99,8 @@ class decoder(nn.Module):
         if METHOD == "attn":
             x = torch.cat((x, self.attn.V), 2) # input feeding
             h, _ = self.rnn(x, self.H)
-            h = self.attn(h, self.M, mask)
+            self.attn(h, self.M, mask)
+            h = self.Wc(torch.cat((self.attn.V, h), 2)).tanh()
             h = self.Wo(h).squeeze(1)
             y = self.softmax(h)
             return y
@@ -119,17 +122,13 @@ class attn(nn.Module): # attention mechanism
 
         # architecture
         self.Wa = None # attention weights
-        if METHOD == "attn":
-            self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
-        self.V = None # context or attention vector
+        self.V = None # context vector
 
     def forward(self, ht, hs, mask):
         self.Wa = ht.bmm(hs.transpose(1, 2)) # [B, 1, H] @ [B, H, L] = [B, 1, L]
         self.Wa = self.Wa.masked_fill(mask.unsqueeze(1), -10000)
         self.Wa = F.softmax(self.Wa, 2)
         self.V = self.Wa.bmm(hs) # [B, 1, L] @ [B, L, H] = [B, 1, H]
-        if METHOD == "attn":
-            self.V = self.Wc(torch.cat((self.V, ht), 2)).tanh()
         return self.V
 
 class copy(nn.Module): # copying mechanism
