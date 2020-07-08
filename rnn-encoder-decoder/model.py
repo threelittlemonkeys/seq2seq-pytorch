@@ -73,7 +73,7 @@ class decoder(nn.Module):
         self.M = None # encoder hidden states
         self.H = None # decoder hidden states
         self.h = None # decoder output
-        self.tts = None # target to source vocab
+        self.stt = None # source to target vocab
 
         # architecture
         self.embed = embed(DEC_EMBED, 0, wti_size)
@@ -114,9 +114,7 @@ class decoder(nn.Module):
             c = self.copy(self.h, self.M, mask) # copy scores
             p = self.softmax(torch.cat([g, c], 1))
             g, c = p.split([g.size(1), c.size(1)], 1)
-            print(g.exp())
-            print(g.size())
-            exit()
+            g = torch.cat([g, zeros(c.size()) - 10000], 1) # [B, tgt_vocab_size + L]
             return p
 
 class attn(nn.Module): # attention mechanism
