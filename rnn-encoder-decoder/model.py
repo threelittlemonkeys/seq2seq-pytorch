@@ -22,7 +22,7 @@ class rnn_encoder_decoder(nn.Module):
             self.dec.copy.V = zeros(b, 1, HIDDEN_SIZE)
         yi = LongTensor([SOS_IDX] * b)
         for t in range(y0.size(1)):
-            yo = self.dec(yi.unsqueeze(1), mask)
+            yo = self.dec(xw, yi.unsqueeze(1), mask)
             yi = y0[:, t] # teacher forcing
             loss += F.nll_loss(yo, yi, ignore_index = PAD_IDX)
         loss /= y0.size(1) # divide by senquence length
@@ -94,7 +94,7 @@ class decoder(nn.Module):
         self.Wo = nn.Linear(HIDDEN_SIZE, wti_size)
         self.softmax = nn.LogSoftmax(1)
 
-    def forward(self, y1, mask):
+    def forward(self, xw, y1, mask):
         x = self.embed(None, y1)
 
         if METHOD == "attn":
@@ -115,8 +115,11 @@ class decoder(nn.Module):
             p = self.softmax(torch.cat([g, c], 1))
             g, c = p.split([g.size(1), c.size(1)], 1)
             g = torch.cat([g, zeros(c.size()) - 10000], 1) # [B, tgt_vocab_size + L]
-            print(g)
-            print(g.size())
+            q = [list(map(self.stt, x.tolist())) for x in xw]
+            print(xw[0])
+            print(q[0])
+            print(xw.size())
+            print(c.size())
             exit()
             return p
 
