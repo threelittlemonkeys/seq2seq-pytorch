@@ -53,13 +53,6 @@ def save_tkn_to_idx(filename, tti):
         fo.write("%s\n" % tkn)
     fo.close()
 
-def src_to_tgt(x_wti, y_wti):
-    stt = defaultdict(int) 
-    for w, i in sorted(x_wti.items()):
-        if w in y_wti:
-            stt[i] = y_wti[w]
-    return lambda x: stt[x]
-
 def load_checkpoint(filename, model = None):
     print("loading %s" % filename)
     checkpoint = torch.load(filename)

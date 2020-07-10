@@ -73,7 +73,6 @@ class decoder(nn.Module):
         self.M = None # encoder hidden states
         self.H = None # decoder hidden states
         self.h = None # decoder output
-        self.stt = None # source to target vocab
 
         # architecture
         self.embed = embed(DEC_EMBED, 0, wti_size)
@@ -90,7 +89,7 @@ class decoder(nn.Module):
         if METHOD == "attn":
             self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
         if METHOD == "copy":
-            self.copy = copy()
+            self.copy = copy(wti_size)
         self.Wo = nn.Linear(HIDDEN_SIZE, wti_size)
         self.softmax = nn.LogSoftmax(1)
 
@@ -107,21 +106,16 @@ class decoder(nn.Module):
             return y
 
         if METHOD == "copy":
-            self.attn.V = self.attn(self.h, self.M, mask)
+            self.attn.V = self.attn(self.M, self.h, mask)
             x = torch.cat((x, self.attn.V), 2)
             self.h, _ = self.rnn(x, self.H)
             g = self.Wo(self.h).squeeze(1) # generation scores
-            c = self.copy(self.h, self.M, mask) # copy scores
+            c = self.copy(self.M, self.h, mask) # copy scores
             p = self.softmax(torch.cat([g, c], 1))
             g, c = p.split([g.size(1), c.size(1)], 1)
-            g = torch.cat([g, zeros(c.size()) - 10000], 1) # [B, tgt_vocab_size + L]
-            q = [list(map(self.stt, x.tolist())) for x in xw]
-            print(xw[0])
-            print(q[0])
-            print(xw.size())
-            print(c.size())
-            exit()
-            return p
+            h = self.copy.merge(xw, g, c)
+            y = self.softmax(h)
+            return y
 
 class attn(nn.Module): # attention mechanism
     def __init__(self):
@@ -131,22 +125,36 @@ class attn(nn.Module): # attention mechanism
         self.Wa = None # attention weights
         self.V = None # context vector
 
-    def forward(self, ht, hs, mask):
-        score = ht.bmm(hs.transpose(1, 2)) # [B, 1, H] @ [B, H, L] = [B, 1, L]
-        score = score.masked_fill(mask.unsqueeze(1), -10000)
-        self.Wa = F.softmax(score, 2)
+    def forward(self, hs, ht, mask):
+        a = ht.bmm(hs.transpose(1, 2)) # [B, 1, H] @ [B, H, L] = [B, 1, L]
+        a = a.masked_fill(mask.unsqueeze(1), -10000)
+        self.Wa = F.softmax(a, 2)
         return self.Wa.bmm(hs) # [B, 1, L] @ [B, L, H] = [B, 1, H]
 
 class copy(nn.Module): # copying mechanism
-    def __init__(self):
+    def __init__(self, wti_size):
         super().__init__()
+        self.stt = {} # source to target vocabulary mapping
+        self.wti_size = wti_size # tgt_vocab_size (V)
 
         # architecture
         self.Wc = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
         self.V = None
 
-    def forward(self, ht, hs, mask):
+    def forward(self, hs, ht, mask):
         hs = hs[:, :-1] # remove EOS token [B, L - 1, H]
         self.V = ht.bmm(self.Wc(hs).tanh().transpose(1, 2)) # [B, 1, L - 1]
         self.V = self.V.squeeze(1).masked_fill(mask[:, :-1], -10000)
         return self.V
+
+    def map(self, args): # source sequence mapping [L] -> [V + L]
+        i, x = args
+        if x > UNK_IDX and x in self.stt:
+            return self.stt[x]
+        return self.wti_size + i
+
+    def merge(self, xw, g, c):
+        idx = LongTensor([list(map(self.map, enumerate(x[:-1]))) for x in xw.tolist()])
+        c_mapped = zeros(len(xw), c.size(1) + g.size(1)).scatter(1, idx, c)
+        g = torch.cat([g, zeros(c.size()) - 10000], 1)
+        return g + c_mapped # [B, V + L]

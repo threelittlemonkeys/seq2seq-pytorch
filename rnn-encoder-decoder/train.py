@@ -8,7 +8,6 @@ def load_data():
     x_cti = load_tkn_to_idx(sys.argv[2]) # source char_to_idx
     x_wti = load_tkn_to_idx(sys.argv[3]) # source word_to_idx
     y_wti = load_tkn_to_idx(sys.argv[4]) # target word_to_idx
-    stt = src_to_tgt(x_wti, y_wti) # source to target vocab
     print("loading %s..." % sys.argv[5])
     fo = open(sys.argv[5])
     for line in fo:
@@ -27,14 +26,14 @@ def load_data():
         batch.append((xc, xw, y0))
     print("data size: %d" % (len(data.y0)))
     print("batch size: %d" % BATCH_SIZE)
-    return batch, x_cti, x_wti, y_wti, stt
+    return batch, x_cti, x_wti, y_wti
 
 def train():
     num_epochs = int(sys.argv[-1])
-    batch, x_cti, x_wti, y_wti, stt = load_data()
+    batch, x_cti, x_wti, y_wti = load_data()
     model = rnn_encoder_decoder(len(x_cti), len(x_wti), len(y_wti))
     if METHOD == "copy":
-        model.dec.stt = stt
+        model.dec.copy.stt = {i: y_wti[w] for w, i in x_wti.items() if w in y_wti}
     enc_optim = torch.optim.Adam(model.enc.parameters(), lr = LEARNING_RATE)
     dec_optim = torch.optim.Adam(model.dec.parameters(), lr = LEARNING_RATE)
     print(model)
