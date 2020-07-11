@@ -99,7 +99,7 @@ class decoder(nn.Module):
         if METHOD == "attn":
             x = torch.cat((x, self.attn.V), 2) # input feeding
             h, _ = self.rnn(x, self.H)
-            self.attn.V = self.attn(h, self.M, mask)
+            self.attn.V = self.attn(self.M, h, mask)
             h = self.Wc(torch.cat((self.attn.V, h), 2)).tanh()
             h = self.Wo(h).squeeze(1)
             y = self.softmax(h)
@@ -111,10 +111,8 @@ class decoder(nn.Module):
             self.h, _ = self.rnn(x, self.H)
             g = self.Wo(self.h).squeeze(1) # generation scores
             c = self.copy(self.M, self.h, mask) # copy scores
-            p = self.softmax(torch.cat([g, c], 1))
-            g, c = p.split([g.size(1), c.size(1)], 1)
-            h = self.copy.merge(xw, g, c)
-            y = self.softmax(h)
+            y = self.copy.merge(xw, g, c)
+            # y = self.softmax(h)
             return y
 
 class attn(nn.Module): # attention mechanism
@@ -154,7 +152,10 @@ class copy(nn.Module): # copying mechanism
         return self.wti_size + i
 
     def merge(self, xw, g, c):
+        _b, _g, _c = len(xw), g.size(1), c.size(1)
+        p = F.softmax(torch.cat([g, c], 1), 1)
+        g, c = p.split([_g, _c], 1)
         idx = LongTensor([list(map(self.map, enumerate(x[:-1]))) for x in xw.tolist()])
-        c_mapped = zeros(len(xw), c.size(1) + g.size(1)).scatter(1, idx, c)
-        g = torch.cat([g, zeros(c.size()) - 10000], 1)
-        return g + c_mapped # [B, V + L]
+        g = torch.cat([g, zeros(c.size())], 1)
+        c = zeros(_b, _g + _c).scatter(1, idx, c)
+        return (g + c).log() # [B, V + L]
