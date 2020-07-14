@@ -111,8 +111,8 @@ class decoder(nn.Module):
             self.h, _ = self.rnn(x, self.H)
             g = self.Wo(self.h).squeeze(1) # generation scores
             c = self.copy(self.M, self.h, mask) # copy scores
-            y = self.copy.merge(xw, g, c)
-            # y = self.softmax(h)
+            h = self.copy.merge(xw, g, c)
+            y = self.softmax(h)
             return y
 
 class attn(nn.Module): # attention mechanism
@@ -153,9 +153,9 @@ class copy(nn.Module): # copying mechanism
 
     def merge(self, xw, g, c):
         _b, _g, _c = len(xw), g.size(1), c.size(1)
-        p = F.softmax(torch.cat([g, c], 1), 1)
-        g, c = p.split([_g, _c], 1)
-        idx = LongTensor([list(map(self.map, enumerate(x[:-1]))) for x in xw.tolist()])
+        # h = F.softmax(torch.cat([g, c], 1), 1)
+        # g, c = h.split([_g, _c], 1)
+        idx = [list(map(self.map, enumerate(x[:-1]))) for x in xw.tolist()]
         g = torch.cat([g, zeros(c.size())], 1)
-        c = zeros(_b, _g + _c).scatter(1, idx, c)
-        return (g + c).log() # [B, V + L]
+        c = zeros(_b, _g + _c).scatter(1, LongTensor(idx), c)
+        return g + c # [B, V + L]
