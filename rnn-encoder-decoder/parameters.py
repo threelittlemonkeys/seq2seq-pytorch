@@ -21,6 +21,7 @@ BEAM_SIZE = 1
 VERBOSE = 0 # 0: None, 1: attention heatmap, 2: beam search
 EVAL_EVERY = 10
 SAVE_EVERY = 10
+SAVE_LOSS = True
 
 PAD, PAD_IDX = "<PAD>", 0 # padding
 SOS, SOS_IDX = "<SOS>", 1 # start of sequence

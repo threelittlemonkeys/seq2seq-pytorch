@@ -12,7 +12,7 @@ class rnn_encoder_decoder(nn.Module):
 
     def forward(self, xc, xw, y0): # for training
         b = y0.size(0) # batch size
-        loss = 0
+        loss = Tensor(b)
         self.zero_grad()
         mask, lens = maskset(xw)
         self.dec.M, self.dec.h = self.enc(b, xc, xw, lens)
@@ -24,9 +24,9 @@ class rnn_encoder_decoder(nn.Module):
         for t in range(y0.size(1)):
             yo = self.dec(xw, yi.unsqueeze(1), mask)
             yi = y0[:, t] # teacher forcing
-            loss += F.nll_loss(yo, yi, ignore_index = PAD_IDX)
+            loss += F.nll_loss(yo, yi, ignore_index = PAD_IDX, reduction = "none")
         loss /= y0.size(1) # divide by senquence length
-        return loss
+        return loss.mean(), loss
 
     def decode(self, x): # for inference
         pass

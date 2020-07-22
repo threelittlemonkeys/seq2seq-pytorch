@@ -76,6 +76,11 @@ def save_checkpoint(filename, model, epoch, loss, time):
         torch.save(checkpoint, filename + ".epoch%d" % epoch)
         print("saved model at epoch %d" % epoch)
 
+def save_loss(filename, epoch, loss_array):
+    fo = open(filename + ".epoch%d.loss" % epoch, "w")
+    fo.write("\n".join(map(str, loss_array)) + "\n")
+    fo.close()
+
 def maskset(x):
     if type(x) == torch.Tensor:
         mask = x.eq(PAD_IDX)
