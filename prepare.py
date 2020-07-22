@@ -29,13 +29,15 @@ def load_data():
         y = [str(y_wti[w]) for w in y]
         data.append((x, y))
     fo.close()
-    data.sort(key = lambda x: -len(x[0])) # sort by source sequence length
-    return data, x_cti, x_wti, y_wti
+    data = sorted(enumerate(data), key = lambda x: -len(x[1][0])) # sort by source sequence length
+    idx, data = zip(*data)
+    return idx, data, x_cti, x_wti, y_wti
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit("Usage: %s training_data" % sys.argv[0])
-    data, x_cti, x_wti, y_wti = load_data()
+    idx, data, x_cti, x_wti, y_wti = load_data()
+    save_idx(sys.argv[1] + ".idx", idx)
     save_data(sys.argv[1] + ".csv", data)
     save_tkn_to_idx(sys.argv[1] + ".src.char_to_idx", x_cti)
     save_tkn_to_idx(sys.argv[1] + ".src.word_to_idx", x_wti)

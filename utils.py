@@ -21,6 +21,11 @@ def tokenize(x, norm = True):
     if UNIT in ("word", "sent"):
         return x.split(" ")
 
+def save_idx(filename, idx):
+    fo = open(filename, "w")
+    fo.write("\n".join(map(str, idx)) + "\n")
+    fo.close()
+
 def save_data(filename, data):
     fo = open(filename, "w")
     for seq in data:
