@@ -2,12 +2,12 @@ from utils import *
 from embedding import embed
 
 class rnn_encoder_decoder(nn.Module):
-    def __init__(self, x_cti_size, x_wti_size, y_wti_size):
+    def __init__(self, x_cti, x_wti, y_wti):
         super().__init__()
 
         # architecture
-        self.enc = encoder(x_cti_size, x_wti_size)
-        self.dec = decoder(y_wti_size)
+        self.enc = encoder(x_cti, x_wti)
+        self.dec = decoder(x_wti, y_wti)
         self = self.cuda() if CUDA else self
 
     def forward(self, xc, xw, y0): # for training
@@ -32,12 +32,12 @@ class rnn_encoder_decoder(nn.Module):
         pass
 
 class encoder(nn.Module):
-    def __init__(self, cti_size, wti_size):
+    def __init__(self, cti, wti):
         super().__init__()
         self.H = None # encoder hidden states
 
         # architecture
-        self.embed = embed(ENC_EMBED, cti_size, wti_size)
+        self.embed = embed(ENC_EMBED, len(cti), len(wti))
         self.rnn = getattr(nn, RNN_TYPE)(
             input_size = self.embed.dim,
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
@@ -68,14 +68,14 @@ class encoder(nn.Module):
         return h, s
 
 class decoder(nn.Module):
-    def __init__(self, wti_size):
+    def __init__(self, x_wti, y_wti):
         super().__init__()
         self.M = None # encoder hidden states
         self.H = None # decoder hidden states
         self.h = None # decoder output
 
         # architecture
-        self.embed = embed(DEC_EMBED, 0, wti_size)
+        self.embed = embed(DEC_EMBED, 0, len(y_wti))
         self.rnn = getattr(nn, RNN_TYPE)(
             input_size = self.embed.dim + HIDDEN_SIZE * (1 + 0),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
@@ -89,8 +89,8 @@ class decoder(nn.Module):
         if METHOD == "attn":
             self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
         if METHOD == "copy":
-            self.copy = copy(wti_size)
-        self.Wo = nn.Linear(HIDDEN_SIZE, wti_size)
+            self.copy = copy(x_wti, y_wti)
+        self.Wo = nn.Linear(HIDDEN_SIZE, len(y_wti))
         self.softmax = nn.LogSoftmax(1)
 
     def forward(self, xw, y1, mask):
@@ -130,10 +130,10 @@ class attn(nn.Module): # attention mechanism
         return self.Wa.bmm(hs) # [B, 1, L] @ [B, L, H] = [B, 1, H]
 
 class copy(nn.Module): # copying mechanism
-    def __init__(self, wti_size):
+    def __init__(self, x_wti, y_wti):
         super().__init__()
-        self.stt = {} # source to target vocabulary mapping
-        self.wti_size = wti_size # tgt_vocab_size (V)
+        self.stt = {i: y_wti[w] for w, i in x_wti.items() if w in y_wti} # source to target
+        self.vocab_size = len(y_wti) # target vocaublary size (V)
 
         # architecture
         self.Wc = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
@@ -149,7 +149,7 @@ class copy(nn.Module): # copying mechanism
         i, x = args
         if x > UNK_IDX and x in self.stt:
             return self.stt[x]
-        return self.wti_size + i
+        return self.vocab_size + i
 
     def merge(self, xw, g, c):
         _b, _g, _c = len(xw), g.size(1), c.size(1)

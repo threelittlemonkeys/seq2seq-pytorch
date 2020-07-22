@@ -31,9 +31,7 @@ def load_data():
 def train():
     num_epochs = int(sys.argv[-1])
     batch, x_cti, x_wti, y_wti = load_data()
-    model = rnn_encoder_decoder(len(x_cti), len(x_wti), len(y_wti))
-    if METHOD == "copy":
-        model.dec.copy.stt = {i: y_wti[w] for w, i in x_wti.items() if w in y_wti}
+    model = rnn_encoder_decoder(x_cti, x_wti, y_wti)
     enc_optim = torch.optim.Adam(model.enc.parameters(), lr = LEARNING_RATE)
     dec_optim = torch.optim.Adam(model.dec.parameters(), lr = LEARNING_RATE)
     print(model)

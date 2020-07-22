@@ -6,8 +6,9 @@ from beamsearch import *
 def load_model():
     x_cti = load_tkn_to_idx(sys.argv[2])
     x_wti = load_tkn_to_idx(sys.argv[3])
+    y_wti = load_tkn_to_idx(sys.argv[4])
     y_itw = load_idx_to_tkn(sys.argv[4])
-    model = rnn_encoder_decoder(len(x_cti), len(x_wti), len(y_itw))
+    model = rnn_encoder_decoder(x_cti, x_wti, y_wti)
     print(model)
     load_checkpoint(sys.argv[1], model)
     return model, x_cti, x_wti, y_itw
