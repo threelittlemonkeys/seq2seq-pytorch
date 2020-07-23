@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-UNIT = "char" # unit of tokenization (char, word)
+UNIT = "word" # unit of tokenization (char, word)
 MIN_LEN = 1 # minimum sequence length for training
 MAX_LEN = 50 # maximum sequence length for training and decoding
 RNN_TYPE = "LSTM" # LSTM, GRU

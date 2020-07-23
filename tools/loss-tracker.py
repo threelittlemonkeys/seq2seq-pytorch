@@ -1,6 +1,6 @@
 import sys
 
-def diff():
+def loss_diff():
 
     fo_data = open(sys.argv[1])
     data = fo_data.read().strip().split("\n")
@@ -29,4 +29,4 @@ def diff():
 if __name__ == "__main__":
     if len(sys.argv) != 5:
         sys.exit("Usage: %s data idx loss1 loss2" % sys.argv[0])
-    diff()
+    loss_diff()
