@@ -25,7 +25,7 @@ class rnn_encoder_decoder(nn.Module):
             yo = self.dec(xw, yi.unsqueeze(1), mask)
             yi = y0[:, t] # teacher forcing
             loss += F.nll_loss(yo, yi, ignore_index = PAD_IDX, reduction = "none")
-        loss /= y0.size(1) # divide by senquence length
+        loss /= y0.size(1) # average over timesteps
         return loss.mean(), loss
 
     def decode(self, x): # for inference
