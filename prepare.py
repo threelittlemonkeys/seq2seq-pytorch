@@ -6,7 +6,7 @@ def load_data():
     x_wti = {PAD: PAD_IDX, SOS: SOS_IDX, EOS: EOS_IDX, UNK: UNK_IDX}
     y_wti = {PAD: PAD_IDX, SOS: SOS_IDX, EOS: EOS_IDX, UNK: UNK_IDX}
     fo = open(sys.argv[1])
-    for line in fo:
+    for i, line in enumerate(fo):
         x, y = line.split("\t")
         x = tokenize(x, UNIT)
         y = tokenize(y, UNIT)
@@ -27,9 +27,9 @@ def load_data():
                 y_wti[w] = len(y_wti)
         x = ["+".join(str(x_cti[c]) for c in w) + ":%d" % x_wti[w] for w in x]
         y = [str(y_wti[w]) for w in y]
-        data.append((x, y))
+        data.append((i, (x, y)))
     fo.close()
-    data = sorted(enumerate(data), key = lambda x: -len(x[1][0])) # sort by source sequence length
+    data = sorted(data, key = lambda x: -len(x[1][0])) # sort by source sequence length
     idx, data = zip(*data)
     return idx, data, x_cti, x_wti, y_wti
 
