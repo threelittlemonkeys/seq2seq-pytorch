@@ -18,8 +18,7 @@ class rnn_encoder_decoder(nn.Module):
         self.dec.M, self.dec.h = self.enc(b, xc, xw, lens)
         self.dec.H = self.enc.H
         self.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
-        if METHOD == "copy":
-            self.dec.copy.V = zeros(b, 1, HIDDEN_SIZE)
+        if COPY: self.dec.copy.V = zeros(b, 1, HIDDEN_SIZE)
         yi = LongTensor([SOS_IDX] * b)
         for t in range(y0.size(1)):
             yo = self.dec(xw, yi.unsqueeze(1), mask)
@@ -77,7 +76,7 @@ class decoder(nn.Module):
         # architecture
         self.embed = embed(DEC_EMBED, 0, len(y_wti))
         self.rnn = getattr(nn, RNN_TYPE)(
-            input_size = self.embed.dim + HIDDEN_SIZE * (1 + 0),
+            input_size = self.embed.dim + HIDDEN_SIZE,
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -86,17 +85,15 @@ class decoder(nn.Module):
             bidirectional = (NUM_DIRS == 2)
         )
         self.attn = attn()
-        if METHOD == "attn":
-            self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
-        if METHOD == "copy":
-            self.copy = copy(x_wti, y_wti)
+        self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
+        if COPY: self.copy = copy(x_wti, y_wti)
         self.Wo = nn.Linear(HIDDEN_SIZE, len(y_wti))
         self.softmax = nn.LogSoftmax(1)
 
     def forward(self, xw, y1, mask):
         x = self.embed(None, y1)
 
-        if METHOD == "attn":
+        if ATTN:
             x = torch.cat((x, self.attn.V), 2) # input feeding
             h, _ = self.rnn(x, self.H)
             self.attn.V = self.attn(self.M, h, mask)
@@ -105,7 +102,7 @@ class decoder(nn.Module):
             y = self.softmax(h)
             return y
 
-        if METHOD == "copy":
+        if COPY:
             self.attn.V = self.attn(self.M, self.h, mask)
             x = torch.cat((x, self.attn.V), 2)
             self.h, _ = self.rnn(x, self.H)

@@ -5,6 +5,10 @@ from os.path import isfile
 from parameters import *
 from collections import defaultdict
 
+Tensor = torch.cuda.FloatTensor if CUDA else torch.FloatTensor
+LongTensor = torch.cuda.LongTensor if CUDA else torch.LongTensor
+zeros = lambda *x: torch.zeros(*x).cuda() if CUDA else torch.zeros
+
 def normalize(x):
     # x = re.sub("[^ ,.?!a-zA-Z0-9\u3131-\u318E\uAC00-\uD7A3]+", " ", x)
     x = re.sub("(?=[,.?!])", " ", x)
