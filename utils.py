@@ -25,17 +25,6 @@ def tokenize(x, norm = True):
     if UNIT in ("word", "sent"):
         return x.split(" ")
 
-def save_idx(filename, idx):
-    fo = open(filename, "w")
-    fo.write("\n".join(map(str, idx)) + "\n")
-    fo.close()
-
-def save_data(filename, data):
-    fo = open(filename, "w")
-    for seq in data:
-        fo.write((" ".join(seq[0]) + "\t" + " ".join(seq[1]) if seq else "") + "\n")
-    fo.close()
-
 def load_tkn_to_idx(filename):
     print("loading %s" % filename)
     tti = {}
@@ -55,12 +44,6 @@ def load_idx_to_tkn(filename):
         itt.append(line)
     fo.close()
     return itt
-
-def save_tkn_to_idx(filename, tti):
-    fo = open(filename, "w")
-    for tkn, _ in sorted(tti.items(), key = lambda x: x[1]):
-        fo.write("%s\n" % tkn)
-    fo.close()
 
 def load_checkpoint(filename, model = None):
     print("loading %s" % filename)

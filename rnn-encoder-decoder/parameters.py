@@ -6,8 +6,7 @@ import torch.nn.functional as F
 UNIT = "word" # unit of tokenization (char, word)
 MIN_LEN = 1 # minimum sequence length for training
 MAX_LEN = 50 # maximum sequence length for training and inference
-SRC_VOCAB_SIZE = 50000 # source vocabulary size
-TGT_VOCAB_SIZE = 50000 # target vocabulary size
+VOCAB_SIZE = 50000 # vocabulary size
 
 RNN_TYPE = "LSTM" # LSTM, GRU
 NUM_DIRS = 2 # number of directions (1: unidirectional, 2: bidirectional)
