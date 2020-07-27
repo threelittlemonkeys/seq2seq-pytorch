@@ -45,8 +45,8 @@ def load_data():
             y_wti[w] += 1
     fo.close()
     x_cti = dict_to_tti(x_cti)
-    x_wti = dict_to_tti(x_wti, VOCAB_SIZE)
-    y_wti = dict_to_tti(y_wti, VOCAB_SIZE)
+    x_wti = dict_to_tti(x_wti, SRC_VOCAB_SIZE)
+    y_wti = dict_to_tti(y_wti, TGT_VOCAB_SIZE)
 
     fo = open(sys.argv[1])
     for i, line in enumerate(fo):
