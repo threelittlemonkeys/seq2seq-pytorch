@@ -23,7 +23,7 @@ def loss_diff():
     fo_loss1.close()
     fo_loss2.close()
     
-    for seq, loss in sorted(corpus.items(), key = lambda x: x[1][2]):
+    for seq, loss in sorted(corpus.items(), key = lambda x: -x[1][1]):
         print("%.6f\t%.6f\t%.6f\t%s" % (*loss, seq))
 
 if __name__ == "__main__":
