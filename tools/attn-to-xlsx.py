@@ -22,7 +22,7 @@ def attn_to_xslx():
             for col_id, txt in enumerate(row.split("\t"), 1):
                 if i > 0 and col_id > 1:
                     txt = float(txt)
-                    rgb = "#FF%s" % (("%X" % int(0x10 * (1 - txt) - 1e-6) * 4))
+                    rgb = "#FF%s" % (("%02X" % int(0xFF * (1 - txt)) * 2))
                     cell_format = workbook.add_format({"bg_color": rgb})
                     worksheet.write(row_id, col_id, txt, cell_format)
                 else:
