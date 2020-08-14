@@ -1,6 +1,6 @@
 import sys
 
-def loss_diff():
+def loss_tracker():
 
     fo_data = open(sys.argv[1])
     data = fo_data.read().strip().split("\n")
@@ -26,13 +26,12 @@ def loss_diff():
     for seq, loss in sorted(corpus.items(), key = lambda x: -x[1][1]):
         print("%.6f\t%.6f\t%.6f\t%s" % (*loss, seq))
 
-    loss1_avrg = sum(x for x, *_ in corpus.values()) / len(corpus)
-    loss2_avrg = sum(x for _, x, _ in corpus.values()) / len(corpus)
-    ratio_avrg = sum(x for *_, x in corpus.values()) / len(corpus)
-
-    print("%.6f\t%.6f\t%.6f" % (loss1_avrg, loss2_avrg, ratio_avrg))
+    # loss1_avrg = sum(x for x, *_ in corpus.values()) / len(corpus)
+    # loss2_avrg = sum(x for _, x, _ in corpus.values()) / len(corpus)
+    # ratio_avrg = sum(x for *_, x in corpus.values()) / len(corpus)
+    # print("%.6f\t%.6f\t%.6f" % (loss1_avrg, loss2_avrg, ratio_avrg))
 
 if __name__ == "__main__":
     if len(sys.argv) != 5:
         sys.exit("Usage: %s data idx loss1 loss2" % sys.argv[0])
-    loss_diff()
+    loss_tracker()
