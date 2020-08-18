@@ -1,8 +1,6 @@
 # Sequence to Sequence Models in PyTorch
 
-Minimal implementations of sequence to sequence models in PyTorch.
-
-- RNN Encoder-Decoder (Cho et al 2014; Luong et al 2015; Gu et al 2016)
+Minimal implementations of sequence to sequence models in PyTorch.  - RNN Encoder-Decoder (Cho et al 2014; Luong et al 2015; Gu et al 2016)
 - Pointer Networks (Vinyals et al 2015)
 - CNNs from "Convolutional Sequence to Sequence Learning" (Gehring et al 2017)
 - The Transformer from "Attention Is All You Need" (Vaswani et all 2017)
@@ -36,6 +34,8 @@ Alex Graves. 2013. [Generating Sequences With Recurrent Neural Networks.](https:
 Jiatao Gu, Zhengdong Lu, Hang Li, Victor O.K. Li. 2016. [Incorporating Copying Mechanism in Sequence-to-Sequence Learning.](https://arxiv.org/abs/1603.06393) In ACL.
 
 Jeremy Hylton. 1993. [The Complete Works of William Shakespeare.](http://shakespeare.mit.edu) http://shakespeare.mit.edu.
+
+Marcin Junczys-Dowmunt. [Dual Conditional Cross-Entropy Filtering of Noisy Parallel Corpora.](https://arxiv.org/pdf/1809.00197.pdf) In Proceedings of the Third Conference on Machine Translation (WMT): Shared Task Papers.
 
 Łukasz Kaiser, Samy Bengio. 2018. [Discrete Autoencoders for Sequence Models.](https://arxiv.org/abs/1801.09797) arXiv:1801.09797.
 
