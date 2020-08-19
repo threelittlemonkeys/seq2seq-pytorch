@@ -1,6 +1,8 @@
 # Sequence to Sequence Models in PyTorch
 
-Minimal implementations of sequence to sequence models in PyTorch.  - RNN Encoder-Decoder (Cho et al 2014; Luong et al 2015; Gu et al 2016)
+Minimal implementations of sequence to sequence models in PyTorch.
+
+- RNN Encoder-Decoder (Cho et al 2014; Luong et al 2015; Gu et al 2016)
 - Pointer Networks (Vinyals et al 2015)
 - CNNs from "Convolutional Sequence to Sequence Learning" (Gehring et al 2017)
 - The Transformer from "Attention Is All You Need" (Vaswani et all 2017)
