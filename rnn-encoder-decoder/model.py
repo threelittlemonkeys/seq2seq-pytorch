@@ -61,7 +61,7 @@ class encoder(nn.Module):
         x = self.embed(xc, xw)
         x = nn.utils.rnn.pack_padded_sequence(x, lens, batch_first = True)
         h, s = self.rnn(x, self.H)
-        s = s[RNN_TYPE == "LSTM"][-NUM_DIRS:] # final hidden state
+        s = (s if RNN_TYPE == "GRU" else s[0])[-NUM_DIRS:] # final hidden state
         s = torch.cat([_ for _ in s], 1).view(b, 1, -1)
         h, _ = nn.utils.rnn.pad_packed_sequence(h, batch_first = True)
         return h, s
