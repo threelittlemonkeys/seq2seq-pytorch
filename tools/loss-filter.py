@@ -1,4 +1,5 @@
 import sys
+import math
 
 def load_data(corpus, raw_data, tkn_data, fn_idx, fn_loss, model_idx):
     fo_idx = open(fn_idx)
@@ -18,10 +19,12 @@ def load_data(corpus, raw_data, tkn_data, fn_idx, fn_loss, model_idx):
     fo_idx.close()
     fo_loss.close()
 
-def dcce(m1_loss, m2_loss, src_len, tgt_len): # dual conditional cross-entropy
+def dcce(m1_loss, m2_loss, *lens):
     if m1_loss < 0 or m2_loss < 0:
         return -1
-    return (m1_loss + m2_loss) / 2 + abs(m1_loss - m2_loss)
+    score = (m1_loss + m2_loss) / 2 + abs(m1_loss - m2_loss)
+    penalty = 1 + math.log(max(lens) / min(lens))
+    return score * penalty
 
 def loss_filter():
     corpus = dict()
@@ -38,6 +41,7 @@ def loss_filter():
         score = dcce(*loss, *lens)
         corpus[txt].append(score)
 
+    print("m1_loss\tm2_loss\tsrc_len\ttgt_len\tscore\tsrc\ttgt")
     for txt, (loss, lens, score) in sorted(corpus.items(), key = lambda x: -x[1][-1]):
         if score < 0:
             continue
