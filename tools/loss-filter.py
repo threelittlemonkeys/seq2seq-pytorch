@@ -23,7 +23,7 @@ def dcce(m1_loss, m2_loss, *lens):
     if m1_loss < 0 or m2_loss < 0:
         return -1
     score = (m1_loss + m2_loss) / 2 + abs(m1_loss - m2_loss)
-    penalty = 1 + math.log(max(lens) / min(lens))
+    penalty = max(lens) / min(lens)
     return score * penalty
 
 def loss_filter():
