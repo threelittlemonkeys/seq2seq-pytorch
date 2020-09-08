@@ -2,17 +2,29 @@ import sys
 import re
 import xlsxwriter
 
-def attn_to_xslx():
-    fo = open(sys.argv[1])
-    data = fo.read().strip().split("\n\n")
-    fo.close()
+def split(fo, sep, z = 1024):
+    buf, txt = fo.read(z), ""
+    while buf:
+        txt += buf
+        i = 0
+        j = txt.find(sep, i)
+        while j != -1:
+            yield txt[i:j]
+            i = j + len(sep)
+            j = txt.find(sep, i)
+        buf = fo.read(z)
+    if txt:
+        yield(txt)
 
-    workbook = xlsxwriter.Workbook(sys.argv[1] + ".attn.xlsx")
+def attn_to_xslx(filename, num = 0):
+    fo = open(filename)
+    num = int(num)
+    workbook = xlsxwriter.Workbook(filename + ".attn.xlsx")
     worksheet = workbook.add_worksheet()
 
     row_id = 0
     sent_id = 0
-    for block in data:
+    for block in split(fo, "\n\n"):
         if not re.match("attn\[[0-9]+\] =(\n\S*(\t\S)+)", block):
             continue
         if sent_id:
@@ -29,10 +41,13 @@ def attn_to_xslx():
                     worksheet.write(row_id, col_id, txt)
             row_id += 1
         sent_id += 1
+        if sent_id == num:
+            break
 
+    fo.close()
     workbook.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        sys.exit("Usage: %s filename" % sys.argv[0])
-    attn_to_xslx()
+    if len(sys.argv) not in (2, 3):
+        sys.exit("Usage: %s filename [number]" % sys.argv[0])
+    attn_to_xslx(*sys.argv[1:])
