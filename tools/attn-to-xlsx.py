@@ -26,7 +26,6 @@ def attn_to_xslx(filename, num = 0):
     for block in split(fo, "\n\n"):
         if not re.match("attn\[[0-9]+\] =(\n\S*(\t\S)+)", block):
             continue
-        print(block)
         if sid:
             rid += 1
         worksheet.write(rid, 0, sid)
