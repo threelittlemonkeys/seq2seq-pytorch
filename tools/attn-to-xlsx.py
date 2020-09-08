@@ -12,7 +12,7 @@ def split(fo, sep, z = 1024):
             yield txt[i:j]
             i = j + len(sep)
             j = txt.find(sep, i)
-        buf = fo.read(z)
+        buf, txt = fo.read(z), txt[i:]
     if txt:
         yield(txt)
 
@@ -22,26 +22,26 @@ def attn_to_xslx(filename, num = 0):
     workbook = xlsxwriter.Workbook(filename + ".attn.xlsx")
     worksheet = workbook.add_worksheet()
 
-    row_id = 0
-    sent_id = 0
+    sid, rid = 0, 0
     for block in split(fo, "\n\n"):
         if not re.match("attn\[[0-9]+\] =(\n\S*(\t\S)+)", block):
             continue
-        if sent_id:
-            row_id += 1
-        worksheet.write(row_id, 0, sent_id)
+        print(block)
+        if sid:
+            rid += 1
+        worksheet.write(rid, 0, sid)
         for i, row in enumerate(block.split("\n")[1:]):
-            for col_id, txt in enumerate(row.split("\t"), 1):
-                if i > 0 and col_id > 1:
+            for cid, txt in enumerate(row.split("\t"), 1):
+                if i > 0 and cid > 1:
                     txt = float(txt)
                     rgb = "#FF%s" % (("%02X" % int(0xFF * (1 - txt)) * 2))
                     cell_format = workbook.add_format({"bg_color": rgb})
-                    worksheet.write(row_id, col_id, txt, cell_format)
+                    worksheet.write(rid, cid, txt, cell_format)
                 else:
-                    worksheet.write(row_id, col_id, txt)
-            row_id += 1
-        sent_id += 1
-        if sent_id == num:
+                    worksheet.write(rid, cid, txt)
+            rid += 1
+        sid += 1
+        if sid == num:
             break
 
     fo.close()

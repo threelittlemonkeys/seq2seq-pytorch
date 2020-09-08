@@ -11,7 +11,7 @@ def split(fo, sep, z = 1024):
             yield txt[i:j]
             i = j + len(sep)
             j = txt.find(sep, i)
-        buf = fo.read(z)
+        buf, txt = fo.read(z), txt[i:]
     if txt:
         yield(txt)
 
