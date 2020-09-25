@@ -14,11 +14,11 @@ num_epochs=5 # number of epochs
 batch_size=100000 # batch size
 id=$(printf "%03d" $7) # identifier
 ln=$((($7 - 1) * batch_size + 1)) # starting line number
-script=$1 # seq2seq script path
+script_path=$1 # seq2seq script path
 
-if [ ${script: -1} == "/" ]
+if [ ${script_path: -1} == "/" ]
 then
-    script=${script:0:-1}
+    script_path=${script_path:0:-1}
 fi
 
 sed -n "$ln,$((ln + batch_size - 1))p" $fn_raw > $fn_out.$id.raw
@@ -30,15 +30,15 @@ paste $fn_out.$id.$src $fn_out.$id.$tgt > $fn_out.$id.$src$tgt
 paste $fn_out.$id.$tgt $fn_out.$id.$src > $fn_out.$id.$tgt$src
 
 fn=$fn_out.$id.$src$tgt
-python3 $script/prepare.py $fn
-python3 $script/train.py $fn.model $fn.src.char_to_idx $fn.src.word_to_idx $fn.tgt.word_to_idx $fn.csv $num_epochs
+python3 $script_path/prepare.py $fn
+python3 $script_path/train.py $fn.model $fn.src.char_to_idx $fn.src.word_to_idx $fn.tgt.word_to_idx $fn.csv $num_epochs
 
 fn=$fn_out.$id.$tgt$src
-python3 $script/prepare.py $fn
-python3 $script/train.py $fn.model $fn.src.char_to_idx $fn.src.word_to_idx $fn.tgt.word_to_idx $fn.csv $num_epochs
+python3 $script_path/prepare.py $fn
+python3 $script_path/train.py $fn.model $fn.src.char_to_idx $fn.src.word_to_idx $fn.tgt.word_to_idx $fn.csv $num_epochs
 
 fn=$fn_out.$id
-python3 $script/loss-filter.py $fn.raw $fn $fn.$src$tgt.idx $fn.$src$tgt.model.epoch$num_epochs.loss $fn.$tgt$src.idx $fn.$tgt$src.model.epoch5.loss > $fn.dcce.tsv
+python3 $script_path/loss-filter.py $fn.raw $fn $fn.$src$tgt.idx $fn.$src$tgt.model.epoch$num_epochs.loss $fn.$tgt$src.idx $fn.$tgt$src.model.epoch5.loss > $fn.dcce.tsv
 
 zip $fn.dcce.data.zip $fn.raw $fn $fn.$src$tgt.idx $fn.$src$tgt.model.epoch$num_epochs.loss $fn.$tgt$src.idx $fn.$tgt$src.model.epoch5.loss
 
