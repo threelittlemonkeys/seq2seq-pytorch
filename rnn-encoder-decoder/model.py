@@ -2,6 +2,7 @@ from utils import *
 from embedding import embed
 
 class rnn_encoder_decoder(nn.Module):
+
     def __init__(self, x_cti, x_wti, y_wti):
         super().__init__()
 
@@ -11,6 +12,7 @@ class rnn_encoder_decoder(nn.Module):
         self = self.cuda() if CUDA else self
 
     def forward(self, xc, xw, y0): # for training
+
         b = y0.size(0) # batch size
         loss = Tensor(b)
         self.zero_grad()
@@ -31,6 +33,7 @@ class rnn_encoder_decoder(nn.Module):
         pass
 
 class encoder(nn.Module):
+
     def __init__(self, cti, wti):
         super().__init__()
         self.H = None # encoder hidden states
@@ -48,6 +51,7 @@ class encoder(nn.Module):
         )
 
     def init_state(self, b): # initialize RNN states
+
         n = NUM_LAYERS * NUM_DIRS
         h = HIDDEN_SIZE // NUM_DIRS
         hs = zeros(n, b, h) # hidden state
@@ -57,8 +61,10 @@ class encoder(nn.Module):
         return hs
 
     def forward(self, b, xc, xw, lens):
+
         self.H = self.init_state(b)
         x = self.embed(xc, xw)
+        lens = lens.cpu()
         x = nn.utils.rnn.pack_padded_sequence(x, lens, batch_first = True)
         h, s = self.rnn(x, self.H)
         s = (s if RNN_TYPE == "GRU" else s[0])[-NUM_DIRS:] # final hidden state
@@ -67,7 +73,9 @@ class encoder(nn.Module):
         return h, s
 
 class decoder(nn.Module):
+
     def __init__(self, x_wti, y_wti):
+
         super().__init__()
         self.M = None # encoder hidden states
         self.H = None # decoder hidden states
@@ -91,6 +99,7 @@ class decoder(nn.Module):
         self.softmax = nn.LogSoftmax(1)
 
     def forward(self, xw, y1, mask):
+
         x = self.embed(None, y1)
 
         if ATTN:
@@ -113,7 +122,9 @@ class decoder(nn.Module):
             return y
 
 class attn(nn.Module): # attention mechanism
+
     def __init__(self):
+
         super().__init__()
 
         # architecture
@@ -121,13 +132,16 @@ class attn(nn.Module): # attention mechanism
         self.V = None # context vector
 
     def forward(self, hs, ht, mask):
+
         a = ht.bmm(hs.transpose(1, 2)) # [B, 1, H] @ [B, H, L] = [B, 1, L]
         a = a.masked_fill(mask.unsqueeze(1), -10000)
         self.Wa = F.softmax(a, 2)
         return self.Wa.bmm(hs) # [B, 1, L] @ [B, L, H] = [B, 1, H]
 
 class copy(nn.Module): # copying mechanism
+
     def __init__(self, x_wti, y_wti):
+
         super().__init__()
         self.stt = {i: y_wti[w] for w, i in x_wti.items() if w in y_wti} # source to target
         self.vocab_size = len(y_wti) # target vocaublary size (V)
@@ -137,18 +151,21 @@ class copy(nn.Module): # copying mechanism
         self.V = None
 
     def forward(self, hs, ht, mask):
+
         hs = hs[:, :-1] # remove EOS token [B, L - 1, H]
         self.V = ht.bmm(self.Wc(hs).tanh().transpose(1, 2)) # [B, 1, L - 1]
         self.V = self.V.squeeze(1).masked_fill(mask[:, :-1], -10000)
         return self.V
 
     def map(self, args): # source sequence mapping [L] -> [V + L]
+
         i, x = args
         if x > UNK_IDX and x in self.stt:
             return self.stt[x]
         return self.vocab_size + i
 
     def merge(self, xw, g, c):
+
         _b, _g, _c = len(xw), g.size(1), c.size(1)
         # h = F.softmax(torch.cat([g, c], 1), 1)
         # g, c = h.split([_g, _c], 1)

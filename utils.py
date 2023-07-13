@@ -10,22 +10,25 @@ LongTensor = torch.cuda.LongTensor if CUDA else torch.LongTensor
 zeros = lambda *x: torch.zeros(*x).cuda() if CUDA else torch.zeros
 
 def normalize(x):
-    # x = re.sub("[^ ,.?!a-zA-Z0-9\u3131-\u318E\uAC00-\uD7A3]+", " ", x)
-    x = re.sub("(?=[,.?!])", " ", x)
+
+    if UNIT in ("word", "sent"):
+        x = re.sub("(?<=[^ ])(?=[,.?!])", " ", x)
     x = re.sub("\s+", " ", x)
     x = re.sub("^ | $", "", x)
-    x = x.lower()
+    # x = x.lower()
     return x
 
 def tokenize(x, norm = True):
+
     if norm:
         x = normalize(x)
     if UNIT == "char":
-        return re.sub(" ", "", x)
+        return list(x)
     if UNIT in ("word", "sent"):
         return x.split(" ")
 
 def load_tkn_to_idx(filename):
+
     print("loading %s" % filename)
     tti = {}
     fo = open(filename)
@@ -36,6 +39,7 @@ def load_tkn_to_idx(filename):
     return tti
 
 def load_idx_to_tkn(filename):
+
     print("loading %s" % filename)
     itt = []
     fo = open(filename)
@@ -46,6 +50,7 @@ def load_idx_to_tkn(filename):
     return itt
 
 def load_checkpoint(filename, model = None):
+
     print("loading %s" % filename)
     checkpoint = torch.load(filename)
     if model:
@@ -57,6 +62,7 @@ def load_checkpoint(filename, model = None):
     return epoch
 
 def save_checkpoint(filename, model, epoch, loss, time):
+
     print("epoch = %d, loss = %f, time = %f" % (epoch, loss, time))
     if filename and model:
         checkpoint = {}
@@ -68,11 +74,13 @@ def save_checkpoint(filename, model, epoch, loss, time):
         print("saved %s" % filename)
 
 def save_loss(filename, epoch, loss_array):
+
     fo = open(filename + ".epoch%d.loss" % epoch, "w")
     fo.write("\n".join(map(str, loss_array)) + "\n")
     fo.close()
 
 def maskset(x):
+
     if type(x) == torch.Tensor:
         mask = x.eq(PAD_IDX)
         lens = x.size(1) - mask.sum(1)
@@ -81,6 +89,7 @@ def maskset(x):
     return mask, x
 
 def mat2csv(m, ch = True, rh = False, delim ="\t"):
+
     v = "%%.%df" % NUM_DIGITS
     if ch: # column header
         csv = delim.join(map(str, m[0])) + "\n" # source sequence
@@ -91,4 +100,5 @@ def mat2csv(m, ch = True, rh = False, delim ="\t"):
     return csv
 
 def f1(p, r):
+
     return 2 * p * r / (p + r) if p + r else 0

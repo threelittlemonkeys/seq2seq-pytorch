@@ -27,7 +27,7 @@ BATCH_SIZE = 64 * BEAM_SIZE
 VERBOSE = 0 # 0: None, 1: attention heatmap, 2: beam search
 EVAL_EVERY = 10
 SAVE_EVERY = 10
-SAVE_LOSS = True
+SAVE_LOSS = False
 NUM_DIGITS = 4 # number of decimal places to print
 
 PAD, PAD_IDX = "<PAD>", 0 # padding
