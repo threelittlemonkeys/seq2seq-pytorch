@@ -12,12 +12,12 @@ TGT_VOCAB_SIZE = 50000 # target vocabulary size (0: limitless)
 RNN_TYPE = "LSTM" # LSTM, GRU
 NUM_DIRS = 2 # number of directions (1: unidirectional, 2: bidirectional)
 NUM_LAYERS = 2
-ATTN = True # attention mechanism
-COPY = False # copying mechanism
+ATTN = False # attention mechanism
+COPY = True # copying mechanism
 HRE = False # (UNIT == "sent") # hierarchical recurrent encoding
-ENC_EMBED = {"lookup": 300} # encoder embedding (char-cnn, char-rnn, lookup, sae)
-DEC_EMBED = {"lookup": 300} # decoder embedding (lookup only)
-HIDDEN_SIZE = 1000
+ENC_EMBED = {"lookup": 50} # encoder embedding (char-cnn, char-rnn, lookup, sae)
+DEC_EMBED = {"lookup": 50} # decoder embedding (lookup only)
+HIDDEN_SIZE = 300
 DROPOUT = 0.5
 LEARNING_RATE = 2e-4
 

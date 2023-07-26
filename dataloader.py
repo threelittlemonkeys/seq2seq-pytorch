@@ -28,8 +28,10 @@ class data():
 
         self.idx = sorted(range(len(self.x0)), key = lambda x: self.idx[x])
         self.y1 = [self.y1[i] for i in self.idx]
-        if self.prob: self.prob = [self.prob[i] for i in self.idx]
-        if self.attn: self.attn = [self.attn[i] for i in self.idx]
+        if self.prob:
+            self.prob = [self.prob[i] for i in self.idx]
+        if self.attn:
+            self.attn = [self.attn[i] for i in self.idx]
 
 class dataloader():
 
