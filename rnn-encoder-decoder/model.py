@@ -20,8 +20,7 @@ class rnn_encoder_decoder(nn.Module):
         mask, lens = maskset(xw)
         self.dec.M, self.dec.H = self.enc(b, xc, xw, lens)
         self.dec.h = zeros(b, 1, HIDDEN_SIZE)
-        if ATTN:
-            self.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
+        self.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
         if COPY:
             self.dec.copy.V = zeros(b, 1, HIDDEN_SIZE)
         yi = LongTensor([SOS_IDX] * b)
@@ -121,7 +120,7 @@ class decoder(nn.Module):
             self.h, self.H = self.rnn(x, self.H)
             g = self.Wo(self.h).squeeze(1) # generation scores
             c = self.copy(self.M, self.h, mask) # copy scores
-            h = self.copy.merge(xw, g, c)
+            h = self.copy.merge(xw, g, c)[:, :g.size(1)]
             y = self.softmax(h)
             return y
 
@@ -177,7 +176,7 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
 
         idx = LongTensor(idx) # [B, L']
         m = zeros(*xw.size(), vocab_size + len(oov)).detach() # [B, L', V + OOV]
-        m = m.scatter(2, idx.unsqueeze(2), 1) # [B, L', V + OOV]
+        m = m.scatter(2, idx.unsqueeze(2), 1)
 
         return m, len(oov)
 

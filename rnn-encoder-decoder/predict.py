@@ -31,8 +31,7 @@ def run_model(model, data, itw):
             mask, lens = maskset(xw)
             model.dec.M, model.dec.H = model.enc(b, xc, xw, lens)
             model.dec.h = zeros(b, 1, HIDDEN_SIZE)
-            if ATTN:
-                model.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
+            model.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
             if COPY:
                 model.dec.copy.V = zeros(b, 1, HIDDEN_SIZE)
             yi = LongTensor([[SOS_IDX]] * b)
