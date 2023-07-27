@@ -18,13 +18,9 @@ class rnn_encoder_decoder(nn.Module):
         loss = Tensor(b)
         self.zero_grad()
         mask, lens = maskset(xw)
+
         self.dec.M, self.dec.H = self.enc(b, xc, xw, lens)
-        self.dec.h = zeros(b, 1, HIDDEN_SIZE)
-        if ATTN:
-            self.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
-        if COPY:
-            self.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
-            self.dec.copy.V = zeros(b, 1, HIDDEN_SIZE)
+        self.dec.init_state(b)
         yi = LongTensor([SOS_IDX] * b)
 
         for t in range(y0.size(1)):
@@ -54,7 +50,7 @@ class encoder(nn.Module):
             bidirectional = (NUM_DIRS == 2)
         )
 
-    def init_state(self, b): # initialize RNN states
+    def init_state(self, b): # initialize states
 
         n = NUM_LAYERS * NUM_DIRS
         h = HIDDEN_SIZE // NUM_DIRS
@@ -102,6 +98,17 @@ class decoder(nn.Module):
         self.Wo = nn.Linear(HIDDEN_SIZE, len(y_wti))
         self.softmax = nn.LogSoftmax(1)
 
+    def init_state(self, b): # initialize states
+
+        self.h = zeros(b, 1, HIDDEN_SIZE)
+
+        if ATTN:
+            self.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
+
+        if COPY:
+            self.attn.V = zeros(b, 1, HIDDEN_SIZE)
+            self.copy.V = zeros(b, 1, HIDDEN_SIZE)
+
     def forward(self, xw, y1, mask):
 
         x = self.embed(None, y1)
@@ -120,8 +127,8 @@ class decoder(nn.Module):
             # selective read
             x = torch.cat((x, self.attn.V), 2)
             self.h, self.H = self.rnn(x, self.H)
-            g = self.Wo(self.h).squeeze(1) # generation scores
-            c = self.copy(self.M, self.h, mask) # copy scores
+            g = self.Wo(self.h).squeeze(1) # generation scores [B, V]
+            c = self.copy(self.M, self.h, mask) # copy scores [B, L']
             h = self.copy.merge(xw, g, c)
             y = self.softmax(h)
             return y
@@ -155,8 +162,8 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
 
     def forward(self, hs, ht, mask): # copy scores
 
-        hs = hs[:, :-1] # remove EOS token [B, L' = L - 1, H]
-        c = ht.bmm(self.W(hs).tanh().transpose(1, 2)) # [B, 1, H] @ [B, H, L'] = [B, 1, L']
+        c = self.W(hs[:, :-1]).tanh() # [B, L' = L - 1, H]
+        c = ht.bmm(c.transpose(1, 2)) # [B, 1, H] @ [B, H, L'] = [B, 1, L']
         c = c.squeeze(1).masked_fill(mask[:, :-1], -10000) # [B, L']
         return c
 
@@ -177,7 +184,7 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
                 idx[-1].append(j)
 
         idx = LongTensor(idx) # [B, L']
-        m = zeros(*xw.size(), vocab_size + len(oov)).detach() # [B, L', V + OOV]
+        m = zeros(*xw.size(), vocab_size + len(oov)).detach() # [B, L', V' = V + OOV]
         m = m.scatter(2, idx.unsqueeze(2), 1)
 
         return m, len(oov)
@@ -185,13 +192,13 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
     def merge(self, xw, g, c):
 
         xw = xw[:, :-1] # [B, L']
-        m, oov_size = self.map(xw, g.size(1)) # [B, L', V + OOV]
+        m, oov_size = self.map(xw, g.size(1)) # [B, L', V']
 
         z = F.softmax(torch.cat([g, c], 1), 1) # combined scores
         g, c = z.split([g.size(1), c.size(1)], 1)
 
-        g = torch.cat([g, zeros(g.size(0), oov_size)], 1) # [B, V + OOV]
-        c = c.unsqueeze(1).bmm(m) # [B, 1, L'] @ [B, L', V + OOV] = [B, 1, V + OOV]
-        z = g + c.squeeze() # [B, V + OOV]
+        g = torch.cat([g, zeros(g.size(0), oov_size)], 1) # [B, V']
+        c = c.unsqueeze(1).bmm(m) # [B, 1, L'] @ [B, L', V'] = [B, 1, V']
+        z = g + c.squeeze() # [B, V']
 
         return z

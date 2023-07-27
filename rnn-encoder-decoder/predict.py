@@ -29,14 +29,11 @@ def run_model(model, data, itw):
             b, t = len(xw), 0 # batch size, time step
             eos = [False for _ in xw] # EOS states
             mask, lens = maskset(xw)
+
             model.dec.M, model.dec.H = model.enc(b, xc, xw, lens)
-            model.dec.h = zeros(b, 1, HIDDEN_SIZE)
-            if ATTN:
-                model.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
-            if COPY:
-                model.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
-                model.dec.copy.V = zeros(b, 1, HIDDEN_SIZE)
+            model.dec.init_state(b) 
             yi = LongTensor([[SOS_IDX]] * b)
+
             batch.y1 = [[] for _ in range(b)]
             batch.prob = [Tensor([0]) for _ in range(b)]
             batch.attn = [[["", *batch.x1[i], EOS]] for i in batch.idx]
