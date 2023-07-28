@@ -103,7 +103,7 @@ class decoder(nn.Module):
         self.h = zeros(b, 1, HIDDEN_SIZE)
 
         if ATTN:
-            self.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
+            self.attn.V = zeros(b, 1, HIDDEN_SIZE)
 
         if COPY:
             self.attn.V = zeros(b, 1, HIDDEN_SIZE)
@@ -163,8 +163,8 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
     def forward(self, hs, ht, mask): # copy scores
 
         c = self.W(hs[:, :-1]).tanh() # [B, L' = L - 1, H]
-        c = ht.bmm(c.transpose(1, 2)) # [B, 1, H] @ [B, H, L'] = [B, 1, L']
-        c = c.squeeze(1).masked_fill(mask[:, :-1], -10000) # [B, L']
+        c = c.bmm(ht.transpose(1, 2)) # [B, L', H] @ [B, H, 1] = [B, L', 1]
+        c = c.squeeze(2).masked_fill(mask[:, :-1], -10000) # [B, L']
         return c
 
     def map(self, xw, vocab_size): # source to target index mapping
