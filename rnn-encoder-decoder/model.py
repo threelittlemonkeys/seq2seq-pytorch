@@ -20,7 +20,7 @@ class rnn_encoder_decoder(nn.Module):
         mask, lens = maskset(xw)
 
         self.dec.M, self.dec.H = self.enc(b, xc, xw, lens)
-        self.dec.init_state(b)
+        self.dec.h = zeros(b, 1, HIDDEN_SIZE)
         yi = LongTensor([SOS_IDX] * b)
 
         for t in range(y0.size(1)):
@@ -98,17 +98,6 @@ class decoder(nn.Module):
         self.Wo = nn.Linear(HIDDEN_SIZE, len(y_wti))
         self.softmax = nn.LogSoftmax(1)
 
-    def init_state(self, b): # initialize states
-
-        self.h = zeros(b, 1, HIDDEN_SIZE)
-
-        if ATTN:
-            self.attn.V = zeros(b, 1, HIDDEN_SIZE)
-
-        if COPY:
-            self.attn.V = zeros(b, 1, HIDDEN_SIZE)
-            self.copy.V = zeros(b, 1, HIDDEN_SIZE)
-
     def forward(self, xw, y1, mask):
 
         x = self.embed(None, y1)
@@ -118,9 +107,7 @@ class decoder(nn.Module):
             h, self.H = self.rnn(x, self.H)
             self.attn(self.M, h, mask)
             self.h = self.Wc(torch.cat((self.attn.V, h), 2)).tanh()
-            h = self.Wo(self.h).squeeze(1)
-            y = self.softmax(h)
-            return y
+            h = self.Wo(self.h).squeeze(1) # [B, V]
 
         if COPY:
             self.attn(self.M, self.h, mask) # attentive read
@@ -129,9 +116,10 @@ class decoder(nn.Module):
             self.h, self.H = self.rnn(x, self.H)
             g = self.Wo(self.h).squeeze(1) # generation scores [B, V]
             c = self.copy(self.M, self.h, mask) # copy scores [B, L']
-            h = self.copy.merge(xw, g, c)
-            y = self.softmax(h)
-            return y
+            h = self.copy.merge(xw, g, c) # combine generation and copy scores [B, V + L']
+
+        y = self.softmax(h)
+        return y
 
 class attn(nn.Module): # attention mechanism (Luong et al 2015)
 
@@ -147,7 +135,7 @@ class attn(nn.Module): # attention mechanism (Luong et al 2015)
 
         a = ht.bmm(hs.transpose(1, 2)) # [B, 1, H] @ [B, H, L] = [B, 1, L]
         a = a.masked_fill(mask.unsqueeze(1), -10000)
-        self.W = F.softmax(a, 2)
+        self.W = F.softmax(a, 2) # [B, 1, L]
         self.V = self.W.bmm(hs) # [B, 1, L] @ [B, L, H] = [B, 1, H]
 
 class copy(nn.Module): # copying mechanism (Gu et al 2016)
@@ -163,8 +151,8 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
     def forward(self, hs, ht, mask): # copy scores
 
         c = self.W(hs[:, :-1]).tanh() # [B, L' = L - 1, H]
-        c = c.bmm(ht.transpose(1, 2)) # [B, L', H] @ [B, H, 1] = [B, L', 1]
-        c = c.squeeze(2).masked_fill(mask[:, :-1], -10000) # [B, L']
+        c = ht.bmm(c.transpose(1, 2)) # [B, 1, H] @ [B, H, L'] = [B, 1, L']
+        c = c.squeeze(1).masked_fill(mask[:, :-1], -10000) # [B, L']
         return c
 
     def map(self, xw, vocab_size): # source to target index mapping

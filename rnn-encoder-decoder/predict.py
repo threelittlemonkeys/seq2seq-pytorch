@@ -31,7 +31,7 @@ def run_model(model, data, itw):
             mask, lens = maskset(xw)
 
             model.dec.M, model.dec.H = model.enc(b, xc, xw, lens)
-            model.dec.init_state(b) 
+            model.dec.h = zeros(b, 1, HIDDEN_SIZE)
             yi = LongTensor([[SOS_IDX]] * b)
 
             batch.y1 = [[] for _ in range(b)]
