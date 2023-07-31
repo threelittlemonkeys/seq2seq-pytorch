@@ -1,5 +1,6 @@
 from utils import *
 from embedding import embed
+import random
 
 class rnn_encoder_decoder(nn.Module):
 
@@ -115,8 +116,8 @@ class decoder(nn.Module):
             x = torch.cat((x, self.attn.V), 2)
             self.h, self.H = self.rnn(x, self.H)
             g = self.Wo(self.h).squeeze(1) # generation scores [B, V]
-            c = self.copy(self.M, self.h, mask) # copy scores [B, L']
-            h = self.copy.merge(xw, g, c) # combine generation and copy scores [B, V + L']
+            c = self.copy.score(self.M, self.h, mask) # copy scores [B, L']
+            h = self.copy.combine(xw, g, c) # [B, V']
 
         y = self.softmax(h)
         return y
@@ -148,7 +149,7 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
         # architecture
         self.W = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
 
-    def forward(self, hs, ht, mask): # copy scores
+    def score(self, hs, ht, mask): # copy score function
 
         c = self.W(hs[:, :-1]).tanh() # [B, L' = L - 1, H]
         c = ht.bmm(c.transpose(1, 2)) # [B, 1, H] @ [B, H, L'] = [B, 1, L']
@@ -172,21 +173,18 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
                 idx[-1].append(j)
 
         idx = LongTensor(idx) # [B, L']
-        m = zeros(*xw.size(), vocab_size + len(oov)).detach() # [B, L', V' = V + OOV]
-        m = m.scatter(2, idx.unsqueeze(2), 1)
+        m = zeros(*xw.size(), vocab_size + len(oov)) # [B, L', V' = V + OOV]
+        m = m.scatter(2, idx.unsqueeze(2), 1) # one hot vector
 
         return m, len(oov)
 
-    def merge(self, xw, g, c):
+    def combine(self, xw, g, c):
 
         xw = xw[:, :-1] # [B, L']
         m, oov_size = self.map(xw, g.size(1)) # [B, L', V']
 
-        z = F.softmax(torch.cat([g, c], 1), 1) # combined scores
-        g, c = z.split([g.size(1), c.size(1)], 1)
-
         g = torch.cat([g, zeros(g.size(0), oov_size)], 1) # [B, V']
         c = c.unsqueeze(1).bmm(m) # [B, 1, L'] @ [B, L', V'] = [B, 1, V']
-        z = g + c.squeeze() # [B, V']
+        z = g + c.squeeze(1) # combine generation and copy scores
 
         return z
