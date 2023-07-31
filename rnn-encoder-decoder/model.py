@@ -90,14 +90,14 @@ class decoder(nn.Module):
             dropout = DROPOUT,
             bidirectional = (NUM_DIRS == 2)
         )
+        self.attn = attn()
         if ATTN:
-            self.attn = attn()
             self.Wc = nn.Linear(HIDDEN_SIZE * 2, HIDDEN_SIZE)
+            self.Wo = nn.Linear(HIDDEN_SIZE, len(y_wti))
+            self.softmax = nn.LogSoftmax(1)
         if COPY:
-            self.attn = attn()
+            self.Wo = nn.Linear(HIDDEN_SIZE, len(y_wti))
             self.copy = copy(x_wti, y_wti)
-        self.Wo = nn.Linear(HIDDEN_SIZE, len(y_wti))
-        self.softmax = nn.LogSoftmax(1)
 
     def forward(self, xw, y1, mask):
 
@@ -109,6 +109,7 @@ class decoder(nn.Module):
             self.attn(self.M, h, mask)
             self.h = self.Wc(torch.cat((self.attn.V, h), 2)).tanh()
             h = self.Wo(self.h).squeeze(1) # [B, V]
+            y = self.softmax(h)
 
         if COPY:
             self.attn(self.M, self.h, mask) # attentive read
@@ -117,9 +118,8 @@ class decoder(nn.Module):
             self.h, self.H = self.rnn(x, self.H)
             g = self.Wo(self.h).squeeze(1) # generation scores [B, V]
             c = self.copy.score(self.M, self.h, mask) # copy scores [B, L']
-            h = self.copy.combine(xw, g, c) # [B, V']
+            y = self.copy.mix(xw, g, c) # [B, V']
 
-        y = self.softmax(h)
         return y
 
 class attn(nn.Module): # attention mechanism (Luong et al 2015)
@@ -178,13 +178,16 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
 
         return m, len(oov)
 
-    def combine(self, xw, g, c):
+    def mix(self, xw, g, c):
 
         xw = xw[:, :-1] # [B, L']
         m, oov_size = self.map(xw, g.size(1)) # [B, L', V']
 
-        g = torch.cat([g, zeros(g.size(0), oov_size)], 1) # [B, V']
+        z = F.softmax(torch.cat([g, c], 1), 1) # normalization
+        g, c = z.split([g.size(1), c.size(1)], 1)
+
+        g = torch.cat([g, Tensor(g.size(0), oov_size).fill_(1e-6)], 1) # [B, V']
         c = c.unsqueeze(1).bmm(m) # [B, 1, L'] @ [B, L', V'] = [B, 1, V']
-        z = g + c.squeeze(1) # combine generation and copy scores
+        z = (g + c.squeeze(1)).log() # mixed probabilities [B, V']
 
         return z
