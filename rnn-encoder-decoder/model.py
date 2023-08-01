@@ -11,18 +11,17 @@ class rnn_encoder_decoder(nn.Module):
         # architecture
         self.enc = encoder(x_cti, x_wti)
         self.dec = decoder(x_wti, y_wti)
-        self = self.cuda() if CUDA else self
+        if CUDA: self = self.cuda()
 
     def forward(self, xc, xw, y0): # for training
 
-        b = y0.size(0) # batch size
-        loss = Tensor(b)
         self.zero_grad()
+        loss = Tensor(len(y0))
         mask, lens = maskset(xw)
 
-        self.dec.M, self.dec.H = self.enc(b, xc, xw, lens)
-        self.dec.h = zeros(b, 1, HIDDEN_SIZE)
-        yi = LongTensor([SOS_IDX] * b)
+        self.dec.M, self.dec.H = self.enc(xc, xw, lens)
+        self.dec.h = zeros(len(y0), 1, HIDDEN_SIZE)
+        yi = LongTensor([SOS_IDX] * len(y0))
 
         for t in range(y0.size(1)):
             yo = self.dec(xw, yi.unsqueeze(1), mask)
@@ -56,14 +55,14 @@ class encoder(nn.Module):
         n = NUM_LAYERS * NUM_DIRS
         h = HIDDEN_SIZE // NUM_DIRS
         hs = zeros(n, b, h) # hidden state
-        if RNN_TYPE == "LSTM":
-            cs = zeros(n, b, h) # LSTM cell state
-            return (hs, cs)
-        return hs
+        if RNN_TYPE == "GRU":
+            return hs
+        cs = zeros(n, b, h) # LSTM cell state
+        return (hs, cs)
 
-    def forward(self, b, xc, xw, lens):
+    def forward(self, xc, xw, lens):
 
-        s = self.init_state(b)
+        s = self.init_state(len(xw))
         x = self.embed(xc, xw)
         x = nn.utils.rnn.pack_padded_sequence(x, lens.cpu(), batch_first = True)
         h, s = self.rnn(x, s)
@@ -154,6 +153,7 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
         c = self.W(hs[:, :-1]).tanh() # [B, L' = L - 1, H]
         c = ht.bmm(c.transpose(1, 2)) # [B, 1, H] @ [B, H, L'] = [B, 1, L']
         c = c.squeeze(1).masked_fill(mask[:, :-1], -10000) # [B, L']
+
         return c
 
     def map(self, xw, vocab_size): # source to target index mapping
@@ -186,7 +186,7 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
         z = F.softmax(torch.cat([g, c], 1), 1) # normalization
         g, c = z.split([g.size(1), c.size(1)], 1)
 
-        g = torch.cat([g, Tensor(g.size(0), oov_size).fill_(1e-6)], 1) # [B, V']
+        g = torch.cat([g, Tensor(len(g), oov_size).fill_(1e-6)], 1) # [B, V']
         c = c.unsqueeze(1).bmm(m) # [B, 1, L'] @ [B, L', V'] = [B, 1, V']
         z = (g + c.squeeze(1)).log() # mixed probabilities [B, V']
 

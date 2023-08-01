@@ -9,7 +9,7 @@ MAX_LEN = 50 # maximum sequence length for training and inference
 SRC_VOCAB_SIZE = 50000 # source vocabulary size (0: limitless)
 TGT_VOCAB_SIZE = 50000 # target vocabulary size (0: limitless)
 
-RNN_TYPE = "LSTM" # LSTM, GRU
+RNN_TYPE = "GRU" # GRU, LSTM
 NUM_DIRS = 2 # number of directions (1: unidirectional, 2: bidirectional)
 NUM_LAYERS = 2
 HRE = False # (UNIT == "sent") # hierarchical recurrent encoding
