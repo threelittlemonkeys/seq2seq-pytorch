@@ -13,15 +13,25 @@ class rnn_encoder_decoder(nn.Module):
         self.dec = decoder(x_wti, y_wti)
         if CUDA: self = self.cuda()
 
+    def init_state(self, b):
+
+        self.dec.h = zeros(b, 1, HIDDEN_SIZE)
+
+        self.dec.attn.W = zeros(b, 1, self.dec.M.size(1))
+        self.dec.attn.V = zeros(b, 1, HIDDEN_SIZE)
+
+        if COPY:
+            self.dec.copy.R = zeros(b, self.dec.M.size(1) - 1)
+
     def forward(self, xc, xw, y0): # for training
 
         self.zero_grad()
-        loss = Tensor(len(y0))
+        loss = Tensor(len(xw))
         mask, lens = maskset(xw)
 
         self.dec.M, self.dec.H = self.enc(xc, xw, lens)
-        self.dec.h = zeros(len(y0), 1, HIDDEN_SIZE)
-        yi = LongTensor([SOS_IDX] * len(y0))
+        self.init_state(len(xw))
+        yi = LongTensor([SOS_IDX] * len(xw))
 
         for t in range(y0.size(1)):
             yo = self.dec(xw, yi.unsqueeze(1), mask)
@@ -81,7 +91,7 @@ class decoder(nn.Module):
         # architecture
         self.embed = embed(DEC_EMBED, 0, len(y_wti))
         self.rnn = getattr(nn, RNN_TYPE)(
-            input_size = self.embed.dim + HIDDEN_SIZE,
+            input_size = self.embed.dim + HIDDEN_SIZE * (1 + COPY),
             hidden_size = HIDDEN_SIZE // NUM_DIRS,
             num_layers = NUM_LAYERS,
             bias = True,
@@ -111,12 +121,13 @@ class decoder(nn.Module):
             y = self.softmax(h)
 
         if COPY:
+            _M = self.M[:, :-1] # EOS-trimmed [B, L' = L - 1]
             self.attn(self.M, self.h, mask) # attentive read
-            # selective read
-            x = torch.cat((x, self.attn.V), 2)
+            self.copy.attn(_M) # selective read
+            x = torch.cat((x, self.attn.V, self.copy.R), 2)
             self.h, self.H = self.rnn(x, self.H)
             g = self.Wo(self.h).squeeze(1) # generation scores [B, V]
-            c = self.copy.score(self.M, self.h, mask) # copy scores [B, L']
+            c = self.copy.score(_M, self.h, mask) # copy scores [B, L']
             y = self.copy.mix(xw, g, c) # [B, V']
 
         return y
@@ -144,15 +155,23 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
 
         super().__init__()
         self.xyi = {i: y_wti[w] for w, i in x_wti.items() if w in y_wti}
+        self.yxi = {i: x_wti[w] for w, i in y_wti.items() if w in x_wti}
 
         # architecture
-        self.W = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
+        self.R = None # selective read
+        self.W = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE) # copy weights
 
-    def score(self, hs, ht, mask): # copy score function
+    def attn(self, hs): # selective read
 
-        c = self.W(hs[:, :-1]).tanh() # [B, L' = L - 1, H]
+        self.R = self.R.unsqueeze(1).bmm(hs) # [B, 1, L'] @ [B, L', H] = [B, 1, H]
+
+    def score(self, hs, ht, mask): # copy scores
+
+        c = self.W(hs).tanh() # [B, L', H]
         c = ht.bmm(c.transpose(1, 2)) # [B, 1, H] @ [B, H, L'] = [B, 1, L']
         c = c.squeeze(1).masked_fill(mask[:, :-1], -10000) # [B, L']
+
+        self.R = F.softmax(c, 1) # selective read weights [B, L']
 
         return c
 
@@ -173,21 +192,20 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
                 idx[-1].append(j)
 
         idx = LongTensor(idx) # [B, L']
-        m = zeros(*xw.size(), vocab_size + len(oov)) # [B, L', V' = V + OOV]
-        m = m.scatter(2, idx.unsqueeze(2), 1) # one hot vector
+        oov = Tensor(len(xw), len(oov)).fill_(1e-6) # [B, OOV]
+        ohv = zeros(*xw.size(), vocab_size + oov.size(1)) # [B, L', V' = V + OOV]
+        ohv = ohv.scatter(2, idx.unsqueeze(2), 1) # one hot vector
 
-        return m, len(oov)
+        return ohv, oov
 
     def mix(self, xw, g, c):
-
-        xw = xw[:, :-1] # [B, L']
-        m, oov_size = self.map(xw, g.size(1)) # [B, L', V']
 
         z = F.softmax(torch.cat([g, c], 1), 1) # normalization
         g, c = z.split([g.size(1), c.size(1)], 1)
 
-        g = torch.cat([g, Tensor(len(g), oov_size).fill_(1e-6)], 1) # [B, V']
-        c = c.unsqueeze(1).bmm(m) # [B, 1, L'] @ [B, L', V'] = [B, 1, V']
+        ohv, oov = self.map(xw[:, :-1], g.size(1))
+        g = torch.cat([g, oov], 1) # [B, V']
+        c = c.unsqueeze(1).bmm(ohv) # [B, 1, L'] @ [B, L', V'] = [B, 1, V']
         z = (g + c.squeeze(1)).log() # mixed probabilities [B, V']
 
         return z
