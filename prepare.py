@@ -40,8 +40,10 @@ def load_data():
         x, y = line.split("\t")
         x = tokenize(x, UNIT)
         y = tokenize(y, UNIT)
-        if len(x) < MIN_LEN or len(x) > MAX_LEN: continue
-        if len(y) < MIN_LEN or len(y) > MAX_LEN: continue
+        if len(x) < MIN_LEN or len(x) > MAX_LEN:
+            continue
+        if len(y) < MIN_LEN or len(y) > MAX_LEN:
+            continue
         for w in x:
             for c in w:
                 x_cti[c] += 1
@@ -49,6 +51,7 @@ def load_data():
         for w in y:
             y_wti[w] += 1
     fo.close()
+
     x_cti = dict_to_tti(x_cti)
     x_wti = dict_to_tti(x_wti, SRC_VOCAB_SIZE)
     y_wti = dict_to_tti(y_wti, TGT_VOCAB_SIZE)
@@ -58,15 +61,18 @@ def load_data():
         x, y = line.split("\t")
         x = tokenize(x, UNIT)
         y = tokenize(y, UNIT)
-        if len(x) < MIN_LEN or len(x) > MAX_LEN: continue
-        if len(y) < MIN_LEN or len(y) > MAX_LEN: continue
+        if len(x) < MIN_LEN or len(x) > MAX_LEN:
+            continue
+        if len(y) < MIN_LEN or len(y) > MAX_LEN:
+            continue
         x = ["+".join(str(x_cti[c]) for c in w) + ":%d" % x_wti.get(w, UNK_IDX) for w in x]
         y = [str(y_wti.get(w, UNK_IDX)) for w in y]
         data.append((i, (x, y)))
-
     fo.close()
+
     data = sorted(data, key = lambda x: -len(x[1][0])) # sort by source sequence length
     idx, data = zip(*data)
+
     return idx, data, x_cti, x_wti, y_wti
 
 if __name__ == "__main__":

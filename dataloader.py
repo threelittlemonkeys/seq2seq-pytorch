@@ -1,6 +1,6 @@
 from utils import *
 
-class data():
+class dataset():
 
     def __init__(self):
 
@@ -37,7 +37,7 @@ class dataloader():
 
     def __init__(self):
 
-        for a, b in data().__dict__.items():
+        for a, b in dataset().__dict__.items():
             setattr(self, a, b)
 
     def append_item(self, x0 = None, x1 = None, xc = None, xw = None, y0 = None):
@@ -77,7 +77,7 @@ class dataloader():
     def split(self): # split into batches
 
         for i in range(0, len(self.y0), BATCH_SIZE):
-            batch = data()
+            batch = dataset()
             j = i + min(BATCH_SIZE, len(self.x0) - i)
             batch.x0 = self.x0[i:j]
             batch.x1 = self.x1[i:j] if HRE else self.flatten(self.x1[i:j])

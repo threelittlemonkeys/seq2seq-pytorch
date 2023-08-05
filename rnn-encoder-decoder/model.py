@@ -121,7 +121,7 @@ class decoder(nn.Module):
             y = self.softmax(h)
 
         if COPY:
-            _M = self.M[:, :-1] # EOS-trimmed [B, L' = L - 1]
+            _M = self.M[:, :-1] # remove EOS token [B, L' = L - 1]
             self.attn(self.M, self.h, mask) # attentive read
             self.copy.attn(_M) # selective read
             x = torch.cat((x, self.attn.V, self.copy.R), 2)
