@@ -1,4 +1,5 @@
 from parameters import *
+from utils import *
 
 def greedy_search(dec, batch, itw, eos, lens, yo):
 
@@ -31,7 +32,7 @@ def beam_search(dec, batch, itw, eos, lens, yo, t):
                 w = [(batch.prob[q], *(batch.y1[q][-1:] or [SOS_IDX]))] # previous token
                 w += list(zip(bp, by))[k:k + BEAM_SIZE] # current candidates
                 w = [(round(p.item(), NUM_DIGITS), itw[y]) for p, y in w]
-                print("beam[%d][%d][%d] = %s ->" % (t, i, k // BEAM_SIZE, w[0]), *w[1:])
+                print(f"beam[{t}][{i}][{k // BEAM_SIZE}] = {w[0]} ->", *w[1:])
 
         for p, k in zip(*bp.topk(BEAM_SIZE)): # append n-best candidates
             q = j + k // BEAM_SIZE
@@ -52,7 +53,7 @@ def beam_search(dec, batch, itw, eos, lens, yo, t):
             eos[k] = (_y1[-1] == EOS_IDX)
 
             if VERBOSE >= 2:
-                print("output[%d][%d][%d] = " % (t, i, k - j), end = "")
+                print("output[{t}][{i}][{k - j}] = ", end = "")
                 print(([itw[y] for y in _y1], round(_prob.item(), 4)))
 
         if VERBOSE >= 2:

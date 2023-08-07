@@ -34,7 +34,7 @@ def run_model(model, data, itw):
             yi = LongTensor([[SOS_IDX]] * len(xw))
 
             batch.y1 = [[] for _ in xw]
-            batch.prob = [Tensor([0]) for _ in xw]
+            batch.prob = [zeros(1) for _ in xw]
             batch.attn = [[["", *batch.x1[i], EOS]] for i in batch.idx]
 
             t = 0
@@ -47,9 +47,10 @@ def run_model(model, data, itw):
 
             if VERBOSE:
                 print()
-                for i, x in filter(lambda x: not x[0] % BEAM_SIZE, enumerate(batch.attn)):
+                for i in range(0, len(batch.y1), BEAM_SIZE):
                     print("attn[%d] =" % (i // BEAM_SIZE))
-                    print(mat2csv(x, rh = True))
+                    print(mat2csv(batch.attn[i], rh = True))
+                    print()
 
             for i, (x0, y0, y1) in enumerate(zip(batch.x0, batch.y0, batch.y1)):
                 if not i % BEAM_SIZE: # use the best candidate from each beam
@@ -58,24 +59,26 @@ def run_model(model, data, itw):
 
 def predict(filename, model, x_cti, x_wti, y_itw):
 
-    data = dataloader()
+    data = dataloader(batch_first = True)
     fo = open(filename)
 
     for x0 in fo:
-        x0 = x0.strip()
-        y0 = None
+
+        x0, y0 = x0.strip(), []
         if x0.count("\t") == 1:
             x0, y0 = x0.split("\t")
         x1 = tokenize(x0, UNIT)
         xc = [[x_cti.get(c, UNK_IDX) for c in w] for w in x1]
         xw = [x_wti.get(w, UNK_IDX) for w in x1]
-        data.append_item(x0, x1, xc, xw, y0)
+
+        data.append_row()
+        data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
+
         for _ in range(BEAM_SIZE - 1):
             data.append_row()
-            data.append_item(x0, x1, xc, xw, y0)
-        data.append_row()
+            data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
+
     fo.close()
-    data.strip()
 
     return run_model(model, data, y_itw)
 

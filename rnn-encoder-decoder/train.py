@@ -4,7 +4,7 @@ from dataloader import *
 
 def load_data():
 
-    data = dataloader()
+    data = dataloader(batch_first = True)
     batch = []
     x_cti = load_tkn_to_idx(sys.argv[2]) # source char_to_idx
     x_wti = load_tkn_to_idx(sys.argv[3]) # source word_to_idx
