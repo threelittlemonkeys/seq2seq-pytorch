@@ -22,7 +22,7 @@ def run_model(model, data, itw):
     with torch.no_grad():
         model.eval()
 
-        for batch in data.split():
+        for batch in data.split(BATCH_SIZE):
 
             xc, xw, _, lens = batch.sort()
             xc, xw = data.tensor(xc, xw, lens, eos = True)
@@ -36,6 +36,7 @@ def run_model(model, data, itw):
             batch.y1 = [[] for _ in xw]
             batch.prob = [zeros(1) for _ in xw]
             batch.attn = [[["", *batch.x1[i], EOS]] for i in batch.idx]
+            batch.copy = [[["", *batch.x1[i]]] for i in batch.idx]
 
             t = 0
             while t < MAX_LEN and sum(eos) < len(eos):
@@ -46,11 +47,13 @@ def run_model(model, data, itw):
             batch.unsort()
 
             if VERBOSE:
-                print()
                 for i in range(0, len(batch.y1), BEAM_SIZE):
-                    print("attn[%d] =" % (i // BEAM_SIZE))
-                    print(mat2csv(batch.attn[i], rh = True))
-                    print()
+                    i //= BEAM_SIZE
+                    print("attn[%d] =" % i)
+                    print(mat2csv(batch.attn[i]), end = "\n\n")
+                    if COPY:
+                        print("copy[%d] =" % i)
+                        print(mat2csv(batch.copy[i][:-1]), end = "\n\n")
 
             for i, (x0, y0, y1) in enumerate(zip(batch.x0, batch.y0, batch.y1)):
                 if not i % BEAM_SIZE: # use the best candidate from each beam
@@ -71,10 +74,7 @@ def predict(filename, model, x_cti, x_wti, y_itw):
         xc = [[x_cti.get(c, UNK_IDX) for c in w] for w in x1]
         xw = [x_wti.get(w, UNK_IDX) for w in x1]
 
-        data.append_row()
-        data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
-
-        for _ in range(BEAM_SIZE - 1):
+        for _ in range(BEAM_SIZE):
             data.append_row()
             data.append_item(x0 = x0, x1 = x1, xc = xc, xw = xw, y0 = y0)
 

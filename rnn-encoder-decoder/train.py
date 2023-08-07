@@ -18,19 +18,18 @@ def load_data():
         x = [x.split(":") for x in x.split(" ")]
         y = [int(x) for x in y.split(" ")]
         xc, xw = zip(*[(list(map(int, xc.split("+"))), int(xw)) for xc, xw in x])
-        data.append_item(xc = xc, xw = xw, y0 = y)
         data.append_row()
+        data.append_item(xc = xc, xw = xw, y0 = y)
     fo.close()
-    data.strip()
 
-    for _batch in data.split():
+    for _batch in data.split(BATCH_SIZE // BEAM_SIZE):
         xc, xw, y0, lens = _batch.sort()
         xc, xw = data.tensor(xc, xw, lens, eos = True)
         _, y0 = data.tensor(None, y0, eos = True)
         batch.append((xc, xw, y0))
 
-    print("data size: %d" % (len(data.y0)))
-    print("batch size: %d" % BATCH_SIZE)
+    print("data size: %d" % len(data.y0))
+    print("batch size: %d" % (BATCH_SIZE // BEAM_SIZE))
 
     return batch, x_cti, x_wti, y_wti
 

@@ -171,6 +171,7 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
         c = ht.bmm(c.transpose(1, 2)) # [B, 1, H] @ [B, H, L'] = [B, 1, L']
         c = c.squeeze(1).masked_fill(mask[:, :-1], -10000) # [B, L']
 
+        self.P = None # generation and copy probabilities
         self.R = F.softmax(c, 1) # selective read weights [B, L']
 
         return c
@@ -201,7 +202,7 @@ class copy(nn.Module): # copying mechanism (Gu et al 2016)
     def mix(self, xw, g, c):
 
         z = F.softmax(torch.cat([g, c], 1), 1) # normalization
-        g, c = z.split([g.size(1), c.size(1)], 1)
+        self.P = g, c = z.split([g.size(1), c.size(1)], 1)
 
         ohv, oov = self.map(xw[:, :-1], g.size(1))
         g = torch.cat([g, oov], 1) # [B, V']
