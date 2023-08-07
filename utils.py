@@ -88,16 +88,18 @@ def maskset(x):
     mask = Tensor([[1] * i + [PAD_IDX] * (x[0] - i) for i in x]).eq(PAD_IDX)
     return mask, x
 
-def mat2csv(m, ch = True, rh = False, delim ="\t"):
+def mat2csv(m, ch = True, rh = True, delim = "\t"):
 
-    v = "%%.%df" % NUM_DIGITS
+    csv = []
     if ch: # column header
-        csv = delim.join(map(str, m[0])) + "\n" # source sequence
+        csv.append(m[0]) # source sequence
     for row in m[ch:]:
+        csv.append([])
         if rh: # row header
-            csv += str(row[0]) + delim # target sequence
-        csv += delim.join([v % x for x in row[rh:]]) + "\n"
-    return csv
+            csv[-1].append(row[0]) # target sequence
+        csv[-1] += [f"{x:.{NUM_DIGITS}f}" for x in row[rh:]]
+
+    return "\n".join(delim.join(x) for x in csv)
 
 def f1(p, r):
 
