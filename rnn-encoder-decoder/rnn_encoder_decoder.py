@@ -15,10 +15,10 @@ class rnn_encoder_decoder(nn.Module):
 
     def forward(self, xc, xw, y0): # for training
 
+        self.zero_grad()
         b = len(xw) # batch size
         loss = zeros(b)
         mask, lens = maskset(xw)
-        self.zero_grad()
 
         self.dec.M, self.dec.H = self.enc(xc, xw, lens)
         self.dec.h = zeros(b, 1, HIDDEN_SIZE)
@@ -27,7 +27,7 @@ class rnn_encoder_decoder(nn.Module):
         for t in range(y0.size(1)):
             yo = self.dec(xw, yi.unsqueeze(1), mask)
             yi = y0[:, t] # teacher forcing
-            loss += F.nll_loss(yo, yi, ignore_index = PAD_IDX, reduction = "none")
+            loss += F.nll_loss(yo, yi, ignore_index = PAD_IDX)
 
         loss /= y0.size(1) # average over timesteps
 
