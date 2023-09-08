@@ -81,12 +81,10 @@ def save_loss(filename, epoch, loss_array):
 
 def maskset(x):
 
-    if type(x) == torch.Tensor:
-        mask = x.eq(PAD_IDX)
-        lens = x.size(1) - mask.sum(1)
-        return mask, lens
-    mask = Tensor([[1] * i + [PAD_IDX] * (x[0] - i) for i in x]).eq(PAD_IDX)
-    return mask, x
+    mask = x.eq(PAD_IDX)
+    lens = x.size(1) - mask.sum(1)
+
+    return mask, lens
 
 def mat2csv(m, ch = True, rh = True, delim = "\t"):
 
@@ -96,7 +94,7 @@ def mat2csv(m, ch = True, rh = True, delim = "\t"):
     for row in m[ch:]:
         csv.append([])
         if rh: # row header
-            csv[-1].append(row[0]) # target sequence
+            csv[-1].append(str(row[0])) # target sequence
         csv[-1] += [f"{x:.{NUM_DIGITS}f}" for x in row[rh:]]
 
     return "\n".join(delim.join(x) for x in csv)
