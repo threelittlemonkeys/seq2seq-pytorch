@@ -3,40 +3,40 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-UNIT = "word" # unit of tokenization (char, word)
+UNIT = "word" # unit of tokenization (char, word, sent)
 MIN_LEN = 1 # minimum sequence length for training
-MAX_LEN = 50 # maximum sequence length for training and decoding
-RNN_TYPE = "LSTM" # LSTM or GRU
-NUM_DIRS = 2 # unidirectional: 1, bidirectional: 2
+MAX_LEN = 50 # maximum sequence length for training and inference
+SRC_VOCAB_SIZE = 50000 # source vocabulary size (0: limitless)
+TGT_VOCAB_SIZE = 50000 # target vocabulary size (0: limitless)
+
+RNN_TYPE = "GRU" # GRU, LSTM
+NUM_DIRS = 2 # number of directions (1: unidirectional, 2: bidirectional)
 NUM_LAYERS = 2
-BATCH_SIZE = 64 * 3 # BATCH_SIZE * BEAM_SIZE
 HRE = (UNIT == "sent") # hierarchical recurrent encoding
-EMBED = {"char-rnn": 150, "lookup": 150} # embeddings (char-cnn, char-rnn, lookup, sae)
+EMBED = {"lookup": 300} # encoder embedding (cnn, rnn, lookup, sae)
 HIDDEN_SIZE = 1000
 DROPOUT = 0.5
 LEARNING_RATE = 2e-4
+
+ATTN = True # attention mechanism
+COPY = False # copying mechanism
+
 BEAM_SIZE = 1
+BATCH_SIZE = 64
+
 VERBOSE = 0 # 0: None, 1: attention heatmap, 2: beam search
 EVAL_EVERY = 10
 SAVE_EVERY = 10
+SAVE_LOSS = False
+NUM_DIGITS = 4 # number of decimal places to print
 
-PAD = "<PAD>" # padding
-EOS = "<EOS>" # end of sequence
-SOS = "<SOS>" # start of sequence
-UNK = "<UNK>" # unknown token
-
-PAD_IDX = 0
-SOS_IDX = 1
-EOS_IDX = 2
-UNK_IDX = 3
+PAD, PAD_IDX = "<PAD>", 0 # padding
+SOS, SOS_IDX = "<SOS>", 1 # start of sequence
+EOS, EOS_IDX = "<EOS>", 2 # end of sequence
+UNK, UNK_IDX = "<UNK>", 3 # unknown token
 
 CUDA = torch.cuda.is_available()
 torch.manual_seed(0) # for reproducibility
 # torch.cuda.set_device(0)
 
-Tensor = torch.cuda.FloatTensor if CUDA else torch.FloatTensor
-LongTensor = torch.cuda.LongTensor if CUDA else torch.LongTensor
-zeros = lambda *x: torch.zeros(*x).cuda() if CUDA else torch.zeros
-
-NUM_DIGITS = 4 # number of decimal places to print
-assert BATCH_SIZE % BEAM_SIZE == 0
+assert ATTN != COPY

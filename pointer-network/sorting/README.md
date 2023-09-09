@@ -1,6 +1,6 @@
 # Sorting Numbers
 
-This is a simple tutorial for sorting one to three digit numbers with Pointer Networks.
+This is a simple tutorial for sorting numbers with Pointer Networks.
 
 1. Training and validation data should be formatted as below, numbers and their sorted indices separated by `\t`:
 
@@ -18,7 +18,7 @@ This is a simple tutorial for sorting one to three digit numbers with Pointer Ne
 
 ```
 UNIT = "word"
-EMBED = {"char-rnn": 100}
+EMBED = {"rnn": 100}
 ```
 
 4. Run `prepare.py` to make CSV and index files.
