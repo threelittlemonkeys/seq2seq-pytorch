@@ -31,21 +31,21 @@ def run_model(model, data):
                 if HRE else xw
             )
 
-            model.dec.M, model.dec.H = model.enc(xc, xw, lens)
+            xh, model.dec.M, model.dec.H = model.enc(xc, xw, lens)
             model.init_state(b)
             yc = LongTensor([[[SOS_IDX]]] * b)
             yw = LongTensor([[SOS_IDX]] * b)
+            yi = model.enc.embed(b, yc, yw)
 
             batch.y1 = [[] for _ in range(b)]
             batch.prob = [0 for _ in range(b)]
             batch.attn = [[["", *batch.x0[i], EOS]] for i in range(b)]
 
             while t < lens[0] and sum(eos) < len(eos):
-                yo = model.dec(yc, yw, mask)
+                yo = model.dec(yi, mask)
                 args = (model.dec, batch, eos, lens, yo)
                 y1 = beam_search(*args, t) if BEAM_SIZE > 1 else greedy_search(*args)
-                yc = torch.cat([xc[i, j] for i, j in enumerate(y1)]).unsqueeze(1)
-                yw = LongTensor([xw[i, j] for i, j in enumerate(y1)]).unsqueeze(1)
+                yi = torch.cat([xh[i, j] for i, j in enumerate(y1)]).unsqueeze(1)
                 t += 1
 
             if VERBOSE:
