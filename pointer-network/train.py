@@ -28,9 +28,9 @@ def load_data():
         if HRE:
             data.append_item(y0 = [len(data.y0[-1]) + 1])
 
-    for _batch in data.split(BATCH_SIZE):
-        xc, xw = data.tensor(_batch.xc, _batch.xw, _batch.lens, eos = True)
-        _, y0 = data.tensor(None, _batch.y0)
+    for _batch in data.batchify(BATCH_SIZE):
+        xc, xw = data.to_tensor(_batch.xc, _batch.xw, _batch.lens, eos = True)
+        _, y0 = data.to_tensor(None, _batch.y0)
         batch.append((xc, xw, y0))
 
     print("data size: %d" % (len(data.y0)))
