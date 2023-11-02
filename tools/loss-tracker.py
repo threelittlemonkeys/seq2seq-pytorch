@@ -1,6 +1,7 @@
 import sys
 
 def loss_tracker():
+
     corpus = dict()
 
     fo_data = open(sys.argv[1])
@@ -30,6 +31,8 @@ def loss_tracker():
     # print("%.6f\t%.6f\t%.6f" % (loss1_avrg, loss2_avrg, ratio_avrg))
 
 if __name__ == "__main__":
+
     if len(sys.argv) != 5:
         sys.exit("Usage: %s data idx loss1 loss2" % sys.argv[0])
+
     loss_tracker()

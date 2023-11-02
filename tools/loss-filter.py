@@ -2,6 +2,7 @@ import sys
 import math
 
 def load_data(corpus, raw_data, tkn_data, fn_idx, fn_loss, model_idx):
+
     fo_idx = open(fn_idx)
     fo_loss = open(fn_loss)
 
@@ -20,13 +21,16 @@ def load_data(corpus, raw_data, tkn_data, fn_idx, fn_loss, model_idx):
     fo_loss.close()
 
 def dcce(m1_loss, m2_loss, *lens):
+
     if m1_loss < 0 or m2_loss < 0:
         return -1
     score = (m1_loss + m2_loss) / 2 + abs(m1_loss - m2_loss)
     penalty = max(lens) / min(lens)
+
     return score * penalty
 
 def loss_filter():
+
     corpus = dict()
 
     with open(sys.argv[1]) as fo:
@@ -42,12 +46,15 @@ def loss_filter():
         corpus[txt].append(score)
 
     print("m1_loss\tm2_loss\tsrc_len\ttgt_len\tscore\tsrc\ttgt")
+
     for txt, (loss, lens, score) in sorted(corpus.items(), key = lambda x: -x[1][-1]):
         if score < 0:
             continue
         print("%.6f\t%.6f\t%d\t%d\t%.6f\t%s" % (*loss, *lens, score, txt))
 
 if __name__ == "__main__":
+
     if len(sys.argv) != 7:
         sys.exit("Usage: %s raw_data tkn_data m1_idx m1_loss m2_idx m2_loss" % sys.argv[0])
+
     loss_filter()
