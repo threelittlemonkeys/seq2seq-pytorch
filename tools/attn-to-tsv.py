@@ -26,22 +26,26 @@ def attn_to_tsv(filename, num = 0):
     idx = 0
     num = int(num)
 
-    with open(filename) as fo:
+    fin = open(filename)
+    fout = open(filename + ".attn.tsv", "w")
 
-        for block in split(fo, "\n\n"):
+    for block in split(fin, "\n\n"):
 
-            if not re.match("attn\[[0-9]+\] =(\n\S*(\t\S)+)", block):
-                continue
+        if not re.match("attn\[[0-9]+\] =(\n\S*(\t\S)+)", block):
+            continue
 
-            if idx:
-                print()
+        if idx:
+            print(file = fout)
 
-            block = block.split("\n")[1:]
-            print("%d\t" % idx + "\n\t".join(block))
+        block = block.split("\n")[1:]
+        print("%d\t" % idx + "\n\t".join(block), file = fout)
 
-            idx += 1
-            if idx == num:
-                break
+        idx += 1
+        if idx == num:
+            break
+
+    fin.close()
+    fout.close()
 
 if __name__ == "__main__":
 

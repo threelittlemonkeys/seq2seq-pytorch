@@ -31,15 +31,15 @@ def run_model(model, data):
                 if HRE else xw
             )
 
+            batch.y1 = [[] for _ in range(b)]
+            batch.prob = [0 for _ in range(b)]
+            batch.attn = [[["", *batch.x0[i], EOS]] for i in range(b)]
+
             xh, model.dec.M, model.dec.H = model.enc(xc, xw, lens)
             model.init_state(b)
             yc = LongTensor([[[SOS_IDX]]] * b)
             yw = LongTensor([[SOS_IDX]] * b)
             yi = model.enc.embed(b, yc, yw)
-
-            batch.y1 = [[] for _ in range(b)]
-            batch.prob = [0 for _ in range(b)]
-            batch.attn = [[["", *batch.x0[i], EOS]] for i in range(b)]
 
             while t < lens[0] and sum(eos) < len(eos):
                 yo = model.dec(yi, mask)
