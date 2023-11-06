@@ -1,7 +1,7 @@
 from utils import *
 from dataloader import *
 from pointer_networks import *
-from beamsearch import *
+from search import *
 
 def load_model():
 
