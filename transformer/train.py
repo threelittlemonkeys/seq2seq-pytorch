@@ -1,102 +1,76 @@
-import sys
-import re
-import time
-from model import *
 from utils import *
-from os.path import isfile
+from dataloader import *
+from transformer import *
 
 def load_data():
-    data = []
-    src_batch = []
-    tgt_batch = []
-    src_batch_len = 0
-    tgt_batch_len = 0
-    print("loading data...")
-    src_vocab = load_vocab(sys.argv[2], "src")
-    tgt_vocab = load_vocab(sys.argv[3], "tgt")
-    fo = open(sys.argv[4], "r")
+
+    data = dataloader(batch_first = True)
+    batch = []
+    x_cti = load_tkn_to_idx(sys.argv[2]) # source char_to_idx
+    x_wti = load_tkn_to_idx(sys.argv[3]) # source word_to_idx
+    y_wti = load_tkn_to_idx(sys.argv[4]) # target word_to_idx
+
+    print(f"loading {sys.argv[5]}")
+
+    fo = open(sys.argv[5])
     for line in fo:
-        line = line.strip()
-        src, tgt = line.split("\t")
-        src = [int(i) for i in src.split(" ")] + [EOS_IDX]
-        tgt = [int(i) for i in tgt.split(" ")] + [EOS_IDX]
-        if len(src) > src_batch_len:
-            src_batch_len = len(src)
-        if len(tgt) > tgt_batch_len:
-            tgt_batch_len = len(tgt)
-        src_batch.append(src)
-        tgt_batch.append(tgt)
-        if len(src_batch) == BATCH_SIZE:
-            for seq in src_batch:
-                seq.extend([PAD_IDX] * (src_batch_len - len(seq)))
-            for seq in tgt_batch:
-                seq.extend([PAD_IDX] * (tgt_batch_len - len(seq)))
-            data.append((LongTensor(src_batch), LongTensor(tgt_batch)))
-            src_batch = []
-            tgt_batch = []
-            src_batch_len = 0
-            tgt_batch_len = 0
+        x, y = line.strip().split("\t")
+        x = [x.split(":") for x in x.split(" ")]
+        y = list(map(int, y.split(" ")))
+        xc, xw = zip(*[(list(map(int, xc.split("+"))), int(xw)) for xc, xw in x])
+        data.append_row()
+        data.append_item(xc = xc, xw = xw, y0 = y)
     fo.close()
-    print("data size: %d" % (len(data) * BATCH_SIZE))
-    print("batch size: %d" % BATCH_SIZE)
-    return data, src_vocab, tgt_vocab
+
+    for _batch in data.batchify(BATCH_SIZE):
+        xc, xw, y0, lens = _batch.sort()
+        xc, xw = data.to_tensor(xc, xw, lens, eos = True)
+        _, y0 = data.to_tensor(None, y0, sos = True, eos = True)
+        batch.append((xc, xw, y0))
+
+    print("data size: %d" % len(data.y0))
+    print("batch size: %d" % (BATCH_SIZE))
+
+    return batch, x_cti, x_wti, y_wti
 
 def train():
-    print("cuda: %s" % CUDA)
-    num_epochs = int(sys.argv[5])
-    data, src_vocab, tgt_vocab = load_data()
-    if VERBOSE:
-        src_itow = [w for w, _ in sorted(src_vocab.items(), key = lambda x: x[1])]
-        tgt_itow = [w for w, _ in sorted(tgt_vocab.items(), key = lambda x: x[1])]
-    enc = encoder(len(src_vocab))
-    dec = decoder(len(tgt_vocab))
-    enc_optim = torch.optim.Adam(enc.parameters())
-    dec_optim = torch.optim.Adam(dec.parameters())
-    epoch = load_checkpoint(sys.argv[1], enc, dec) if isfile(sys.argv[1]) else 0
+
+    num_epochs = int(sys.argv[-1])
+    batch, x_cti, x_wti, y_wti = load_data()
+    model = transformer(x_cti, x_wti, y_wti)
+    print(model)
+
+    enc_optim = torch.optim.Adam(model.enc.parameters(), lr = LEARNING_RATE)
+    dec_optim = torch.optim.Adam(model.dec.parameters(), lr = LEARNING_RATE)
+    epoch = load_checkpoint(sys.argv[1], model) if isfile(sys.argv[1]) else 0
     filename = re.sub("\.epoch[0-9]+$", "", sys.argv[1])
-    print(enc)
-    print(dec)
-    print("training model...")
+
+    print("training model")
+
     for ei in range(epoch + 1, epoch + num_epochs + 1):
-        ii = 0
+
         loss_sum = 0
-        timer = time.time()
-        for x, y in data:
-            ii += 1
-            loss = 0
-            enc.zero_grad()
-            dec.zero_grad()
-            mask = mask_pad(x)
-            if VERBOSE:
-                pred = [[] for _ in range(BATCH_SIZE)]
-            enc_out = enc(x, mask)
-            dec_in = LongTensor([SOS_IDX] * BATCH_SIZE).unsqueeze(1)
-            for t in range(y.size(1)):
-                dec_out = dec(enc_out, dec_in, mask)
-                loss += F.nll_loss(dec_out, y[:, t], size_average = False, ignore_index = PAD_IDX)
-                dec_in = torch.cat((dec_in, y[:, t].unsqueeze(1)), 1) # teacher forcing
-                if VERBOSE:
-                    for i, j in enumerate(dec_out.data.topk(1)[1]):
-                        pred[i].append(scalar(j))
-            loss /= y.data.gt(0).sum().float() # divide by the number of unpadded tokens
-            loss.backward()
-            enc_optim.step()
-            dec_optim.step()
-            loss = scalar(loss)
-            loss_sum += loss
-            # print("epoch = %d, iteration = %d, loss = %f" % (ei, ii, loss))
-        timer = time.time() - timer
-        loss_sum /= len(data)
+        timer = time()
+
+        for xc, xw, y0 in batch:
+
+            loss = model(xc, xw, y0) # forward pass and compute loss
+            loss.backward() # compute gradients
+            enc_optim.step() # update encoder parameters
+            dec_optim.step() # update decoder parameters
+            loss_sum += loss.item()
+
+        timer = time() - timer
+        loss_sum /= len(batch)
+
         if ei % SAVE_EVERY and ei != epoch + num_epochs:
-            save_checkpoint("", None, None, ei, loss_sum, timer)
+            save_checkpoint("", None, ei, loss_sum, timer)
         else:
-            if VERBOSE:
-                for x, y in zip(x, pred):
-                    print(" ".join([src_itow[scalar(i)] for i in x if scalar(i) != PAD_IDX]))
-                    print(" ".join([tgt_itow[i] for i in y if i != PAD_IDX]))
-            save_checkpoint(filename, enc, dec, ei, loss_sum, timer)
+            save_checkpoint(filename, model, ei, loss_sum, timer)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 6:
-        sys.exit("Usage: %s model vocab.src vocab.tgt training_data num_epoch" % sys.argv[0])
+
+    if len(sys.argv) != 7:
+        sys.exit("Usage: %s model vocab.src.char_to_idx vocab.src.word_to_idx vocab.tgt.word_to_idx training_data num_epoch" % sys.argv[0])
+
     train()
